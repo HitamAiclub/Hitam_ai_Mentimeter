@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloudinary Test</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        pre { background: #333; color: #0f0; padding: 10px; overflow-x: auto; border-radius: 4px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .error { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Debugging Cloudinary Upload</h2>
+        <p><strong>Cloud Name:</strong> dwva5ae36</p>
+        <p><strong>Preset:</strong> Hitam_ai</p>
+        
+        <form id="uploadForm">
+            <input type="file" id="fileInput" accept="image/*" required>
+            <br><br>
+            <button type="submit">Test Upload</button>
+        </form>
+
+        <br>
+        <div id="status"></div>
+        <pre id="output">Waiting for upload...</pre>
+    </div>
+
+    <script>
+        const CLOUD_NAME = 'dwva5ae36';
+        const PRESET = 'Hitam_ai'; // Ensure this matches exactly what is in Cloudinary
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const fileInput = document.getElementById('fileInput');
+            const statusDiv = document.getElementById('status');
+            const outputPre = document.getElementById('output');
+
+            if (!fileInput.files.length) return;
+
+            statusDiv.innerText = "Uploading...";
+            outputPre.innerText = "Processing...";
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('upload_preset', PRESET);
+            // formData.append('folder', 'test_debug'); // Optional: try removing this if it fails
+
+            try {
+                console.log(`Sending to: https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`);
+                
+                const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+                
+                if (res.ok) {
+                    statusDiv.innerHTML = '<span style="color:green">✅ Success!</span>';
+                    outputPre.innerText = JSON.stringify(data, null, 2);
+                    // Show image
+                    const img = document.createElement('img');
+                    img.src = data.secure_url;
+                    img.style.maxWidth = "100%";
+                    img.style.marginTop = "10px";
+                    document.querySelector('.container').appendChild(img);
+                } else {
+                    statusDiv.innerHTML = '<span class="error">❌ Failed</span>';
+                    outputPre.innerText = JSON.stringify(data, null, 2);
+                }
+
+            } catch (error) {
+                statusDiv.innerHTML = '<span class="error">❌ Network/Code Error</span>';
+                outputPre.innerText = error.toString();
+            }
+        });
+    </script>
+</body>
+</html>
