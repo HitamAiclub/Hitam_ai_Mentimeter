@@ -1,5 +1,4 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { GameProvider } from './context/GameContext';
 
 // Pages (to be created)
@@ -16,43 +15,41 @@ import ProtectedRoute from './components/ProtectedRoute';
 function App() {
   return (
     <GameProvider>
-      <BrowserRouter>
-        <div className="min-h-screen bg-gray-900 font-sans relative">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
+      <div className="min-h-screen bg-gray-900 font-sans relative">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
 
 
-            <Route path="/admin" element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            } />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
 
-            <Route path="/admin/create" element={
-              <ProtectedRoute>
-                <CreateQuiz />
-              </ProtectedRoute>
-            } />
+          <Route path="/admin/create" element={
+            <ProtectedRoute>
+              <CreateQuiz />
+            </ProtectedRoute>
+          } />
 
-            <Route path="/admin/edit/:quizId" element={
-              <ProtectedRoute>
-                <CreateQuiz />
-              </ProtectedRoute>
-            } />
+          <Route path="/admin/edit/:quizId" element={
+            <ProtectedRoute>
+              <CreateQuiz />
+            </ProtectedRoute>
+          } />
 
-            <Route path="/host/:sessionId" element={
-              <ProtectedRoute>
-                <HostPanel />
-              </ProtectedRoute>
-            } />
+          <Route path="/host/:sessionId" element={
+            <ProtectedRoute>
+              <HostPanel />
+            </ProtectedRoute>
+          } />
 
-            <Route path="/join" element={<JoinGame />} />
-            <Route path="/play/:sessionId" element={<GameView />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </div>
-      </BrowserRouter>
+          <Route path="/join" element={<JoinGame />} />
+          <Route path="/play/:sessionId" element={<GameView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
     </GameProvider>
   );
 }
