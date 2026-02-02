@@ -452,6 +452,30 @@ const Dashboard = () => {
                 )}
 
             </div>
+            {/* Mobile Bottom Navigation */}
+            <div className="md:hidden fixed bottom-0 inset-x-0 bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 p-4 pb-8 z-50 flex justify-around">
+                <button
+                    onClick={() => setActiveTab('home')}
+                    className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'}`}
+                >
+                    <Home className="w-5 h-5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('quizzes')}
+                    className={`flex flex-col items-center gap-1 ${activeTab === 'quizzes' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'}`}
+                >
+                    <FileText className="w-5 h-5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Quizzes</span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('history')}
+                    className={`flex flex-col items-center gap-1 ${activeTab === 'history' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'}`}
+                >
+                    <Clock className="w-5 h-5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">History</span>
+                </button>
+            </div>
         </div>
     );
 };
