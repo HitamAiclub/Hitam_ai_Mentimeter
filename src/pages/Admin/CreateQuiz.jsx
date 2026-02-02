@@ -246,17 +246,17 @@ const CreateQuiz = () => {
 
             {/* Sidebar / Config - Hidden on Mobile, Visible on LG, OR Visible if Mobile Drawer Open */}
             <div className={`
-                fixed inset-y-0 left-0 z-50 w-72 bg-gray-900/95 backdrop-blur-xl border-r border-gray-800 p-6 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:bg-transparent lg:border-none lg:p-0 lg:block lg:w-72 lg:overflow-visible
-                ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                fixed inset-y-0 left-0 z-[60] w-72 bg-slate-900 border-r border-gray-800 p-6 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:bg-transparent lg:border-none lg:p-0 lg:block lg:w-72 lg:overflow-visible
+                ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} shadow-2xl lg:shadow-none
             `}>
                 {/* Mobile Close Button */}
-                <button onClick={() => setIsMobileSidebarOpen(false)} className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white">
+                <button onClick={() => setIsMobileSidebarOpen(false)} className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white p-2">
                     <X className="w-6 h-6" />
                 </button>
 
                 <div className="h-full overflow-y-auto pr-2 scrollbar-hide">
-                    <button onClick={() => navigate('/admin')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors">
-                        <ArrowLeft className="w-4 h-4" /> Back to Dash
+                    <button onClick={() => navigate('/admin')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors font-bold">
+                        <ArrowLeft className="w-5 h-5" /> Back to Dashboard
                     </button>
 
                     {/* Participant Info Config */}
@@ -361,16 +361,24 @@ const CreateQuiz = () => {
             <div className="flex-1 w-full lg:ml-80 space-y-8">
 
                 {/* Header Actions */}
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-900/80 backdrop-blur-xl p-4 lg:p-6 rounded-2xl border border-gray-800 sticky top-4 lg:top-24 z-40 shadow-2xl">
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-900 md:bg-gray-900/80 backdrop-blur-xl p-4 lg:p-6 rounded-2xl border border-gray-800 sticky top-4 lg:top-24 z-50 shadow-2xl">
 
                     {/* Mobile Menu Button */}
                     <div className="flex items-center gap-4 w-full md:w-auto">
-                        <button
-                            onClick={() => setIsMobileSidebarOpen(true)}
-                            className="lg:hidden p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-                        >
-                            <Menu className="w-6 h-6" />
-                        </button>
+                        <div className="flex items-center gap-2 lg:hidden">
+                            <button
+                                onClick={() => navigate('/admin')}
+                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                            >
+                                <ArrowLeft className="w-6 h-6" />
+                            </button>
+                            <button
+                                onClick={() => setIsMobileSidebarOpen(true)}
+                                className="p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                            >
+                                <Menu className="w-6 h-6" />
+                            </button>
+                        </div>
 
                         <input
                             type="text"
