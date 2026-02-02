@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Play, Save, CheckCircle2, X, Clock, ArrowLeft, Settings, Type, Hash, Mail, Upload } from 'lucide-react';
+import { Plus, Trash2, Play, Save, CheckCircle2, X, Clock, ArrowLeft, Settings, Type, Hash, Mail, Upload, Menu } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getAuth } from "firebase/auth";
@@ -29,6 +29,8 @@ const CreateQuiz = () => {
     // New Field State
     const [newFieldLabel, setNewFieldLabel] = useState("");
     const [newFieldType, setNewFieldType] = useState("text");
+
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false); // Mobile Drawer State
 
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -171,113 +173,213 @@ const CreateQuiz = () => {
         }
     };
 
-    return (
-        <div className="min-h-screen p-8 pt-24 pb-24 max-w-7xl mx-auto flex gap-8">
+    // Reusable Upload Helper
+    const uploadToCloudinary = async (file) => {
+        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dwva5ae36';
+        let uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'Hitam_ai';
+        const safeTitle = title.replace(/[^a-zA-Z0-9]/g, "_");
+        const folderPath = `Hitam_ai/Quize/${safeTitle}`;
 
-            {/* Sidebar / Config */}
-            <div className="w-72 flex-shrink-0 hidden lg:block space-y-6 fixed left-8 top-24 bottom-8 overflow-y-auto pr-2 scrollbar-hide">
-                <button onClick={() => navigate('/admin')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors">
-                    <ArrowLeft className="w-4 h-4" /> Back to Dash
+        const upload = async (preset) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', preset);
+            formData.append('folder', folderPath);
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+                method: 'POST',
+                body: formData
+            });
+            if (!res.ok) throw new Error('Upload failed');
+            return await res.json();
+        };
+
+        try {
+            return await upload(uploadPreset);
+        } catch (err) {
+            console.warn(`Preset ${uploadPreset} failed. Retrying with fallbacks...`);
+            const fallbacks = ['ml_default', 'default', 'cloud_default'];
+            for (const fb of fallbacks) {
+                try {
+                    return await upload(fb);
+                } catch (e) { continue; }
+            }
+            throw new Error("All upload attempts failed.");
+        }
+    };
+
+    const handleImageUpload = async (e, qIndex, isOption = false, oIndex = null) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            if (isOption) {
+                // Set option uploading state if we tracked it, for now just UI blocked?
+                // Ideally we'd have a local loading state for options too.
+            } else {
+                updateQuestion(qIndex, 'uploading', true);
+            }
+
+            const data = await uploadToCloudinary(file);
+
+            if (data && data.secure_url) {
+                if (isOption) {
+                    updateOption(qIndex, oIndex, 'imageUrl', data.secure_url);
+                } else {
+                    // For questions: Append to images array, or set imageUrl if undefined
+                    const q = questions[qIndex];
+                    const currentImages = q.images || (q.imageUrl ? [q.imageUrl] : []);
+                    updateQuestion(qIndex, 'images', [...currentImages, data.secure_url]);
+                    // Clear legacy imageUrl to avoid confusion, or keep it synced?
+                    // Let's rely on 'images' array primarily in UI.
+                }
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            alert("Upload failed: " + error.message);
+        } finally {
+            if (!isOption) updateQuestion(qIndex, 'uploading', false);
+        }
+    };
+
+    return (
+        <div className="min-h-screen p-4 pt-4 lg:p-8 lg:pt-24 pb-24 max-w-7xl mx-auto flex gap-8 relative">
+
+            {/* Sidebar / Config - Hidden on Mobile, Visible on LG, OR Visible if Mobile Drawer Open */}
+            <div className={`
+                fixed inset-y-0 left-0 z-50 w-72 bg-gray-900/95 backdrop-blur-xl border-r border-gray-800 p-6 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:bg-transparent lg:border-none lg:p-0 lg:block lg:w-72 lg:overflow-visible
+                ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            `}>
+                {/* Mobile Close Button */}
+                <button onClick={() => setIsMobileSidebarOpen(false)} className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white">
+                    <X className="w-6 h-6" />
                 </button>
 
-                {/* Participant Info Config */}
-                <div className="bg-gray-800/60 backdrop-blur border border-gray-700 p-4 rounded-xl shadow-lg">
-                    <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-wider mb-4">
-                        <Settings className="w-3 h-3" />
-                        Player Info Form
-                    </div>
+                <div className="h-full overflow-y-auto pr-2 scrollbar-hide">
+                    <button onClick={() => navigate('/admin')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition-colors">
+                        <ArrowLeft className="w-4 h-4" /> Back to Dash
+                    </button>
 
-                    <div className="space-y-3 mb-4">
-                        {participantFields.map((field, i) => (
-                            <div key={i} className="flex justify-between items-center bg-gray-900/50 p-3 rounded-lg border border-gray-700/50 group hover:border-gray-600 transition-all">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="text-gray-500 bg-gray-800 p-1.5 rounded">
-                                        {getIconForType(field.type)}
+                    {/* Participant Info Config */}
+                    <div className="bg-gray-800/60 backdrop-blur border border-gray-700 p-4 rounded-xl shadow-lg">
+                        <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-wider mb-4">
+                            <Settings className="w-3 h-3" />
+                            Player Info Form
+                        </div>
+
+                        <div className="space-y-3 mb-4">
+                            {participantFields.map((field, i) => (
+                                <div key={i} className="flex justify-between items-center bg-gray-900/50 p-3 rounded-lg border border-gray-700/50 group hover:border-gray-600 transition-all">
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className="text-gray-500 bg-gray-800 p-1.5 rounded">
+                                            {getIconForType(field.type)}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-sm text-gray-200 font-medium truncate">{field.label}</span>
+                                            <span className="text-[10px] text-gray-500 uppercase">{field.type}</span>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-sm text-gray-200 font-medium truncate">{field.label}</span>
-                                        <span className="text-[10px] text-gray-500 uppercase">{field.type}</span>
-                                    </div>
+                                    {field.id !== 'name' && (
+                                        <button onClick={() => setParticipantFields(participantFields.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    )}
                                 </div>
-                                {field.id !== 'name' && (
-                                    <button onClick={() => setParticipantFields(participantFields.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
 
-                    <div className="bg-gray-900/30 p-3 rounded-lg border border-gray-700/30 space-y-3">
-                        <div className="text-[10px] text-gray-500 uppercase font-bold">Add New Field</div>
-                        <input
-                            type="text"
-                            value={newFieldLabel}
-                            onChange={(e) => setNewFieldLabel(e.target.value)}
-                            placeholder="Label (e.g. Roll No)"
-                            className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-primary-500 transition-colors"
-                        />
-                        <div className="flex gap-2">
-                            <select
-                                value={newFieldType}
-                                onChange={(e) => setNewFieldType(e.target.value)}
-                                className="bg-gray-900 border border-gray-700 rounded px-2 py-2 text-xs text-white outline-none focus:border-primary-500 flex-1"
-                            >
-                                <option value="text">Text</option>
-                                <option value="number">Number</option>
-                                <option value="email">Email</option>
-                            </select>
-                            <button
-                                onClick={handleAddField}
-                                disabled={!newFieldLabel.trim()}
-                                className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white px-3 py-2 rounded text-xs font-bold transition-colors"
-                            >
-                                Add
-                            </button>
+                        <div className="bg-gray-900/30 p-3 rounded-lg border border-gray-700/30 space-y-3">
+                            <div className="text-[10px] text-gray-500 uppercase font-bold">Add New Field</div>
+                            <input
+                                type="text"
+                                value={newFieldLabel}
+                                onChange={(e) => setNewFieldLabel(e.target.value)}
+                                placeholder="Label (e.g. Roll No)"
+                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-primary-500 transition-colors"
+                            />
+                            <div className="flex gap-2">
+                                <select
+                                    value={newFieldType}
+                                    onChange={(e) => setNewFieldType(e.target.value)}
+                                    className="bg-gray-900 border border-gray-700 rounded px-2 py-2 text-xs text-white outline-none focus:border-primary-500 flex-1"
+                                >
+                                    <option value="text">Text</option>
+                                    <option value="number">Number</option>
+                                    <option value="email">Email</option>
+                                </select>
+                                <button
+                                    onClick={handleAddField}
+                                    disabled={!newFieldLabel.trim()}
+                                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white px-3 py-2 rounded text-xs font-bold transition-colors"
+                                >
+                                    Add
+                                </button>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="pt-4 border-t border-gray-800">
-                    <div className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-4">Slides ({questions.length})</div>
-                    <div className="space-y-3">
-                        {questions.map((q, i) => (
-                            <div key={i} className="bg-gray-800/40 backdrop-blur border border-gray-700 p-4 rounded-xl cursor-pointer hover:border-primary-500 transition-all group relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1 h-full bg-gray-700 group-hover:bg-primary-500 transition-colors"></div>
-                                <div className="flex justify-between items-center mb-2 pl-3">
-                                    <span className="text-xs font-bold text-gray-500">SLIDE {i + 1}</span>
-                                    <button onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (window.confirm("Delete this slide?")) {
-                                            const newQs = questions.filter((_, idx) => idx !== i);
-                                            setQuestions(newQs);
-                                        }
-                                    }} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded text-red-500 transition-all">
-                                        <Trash2 className="w-3 h-3" />
-                                    </button>
+                    <div className="pt-4 border-t border-gray-800">
+                        <div className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-4">Slides ({questions.length})</div>
+                        <div className="space-y-3">
+                            {questions.map((q, i) => (
+                                <div key={i} className="bg-gray-800/40 backdrop-blur border border-gray-700 p-4 rounded-xl cursor-pointer hover:border-primary-500 transition-all group relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-gray-700 group-hover:bg-primary-500 transition-colors"></div>
+                                    <div className="flex justify-between items-center mb-2 pl-3">
+                                        <span className="text-xs font-bold text-gray-500">SLIDE {i + 1}</span>
+                                        <button onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (window.confirm("Delete this slide?")) {
+                                                const newQs = questions.filter((_, idx) => idx !== i);
+                                                setQuestions(newQs);
+                                            }
+                                        }} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded text-red-500 transition-all">
+                                            <Trash2 className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                    <div className="text-xs text-gray-300 truncate pl-3 font-medium">{q.text || "New Question"}</div>
                                 </div>
-                                <div className="text-xs text-gray-300 truncate pl-3 font-medium">{q.text || "New Question"}</div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
+                        <button onClick={addQuestion} className="w-full mt-4 py-3 border-2 border-dashed border-gray-700 rounded-xl text-gray-500 hover:border-primary-500 hover:text-primary-400 transition-all flex items-center justify-center gap-2 text-sm font-bold group">
+                            <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" /> Add Slide
+                        </button>
+                        {/* Spacer for bottom mobile nav if needed */}
+                        <div className="h-20 lg:hidden"></div>
                     </div>
-                    <button onClick={addQuestion} className="w-full mt-4 py-3 border-2 border-dashed border-gray-700 rounded-xl text-gray-500 hover:border-primary-500 hover:text-primary-400 transition-all flex items-center justify-center gap-2 text-sm font-bold group">
-                        <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" /> Add Slide
-                    </button>
                 </div>
             </div>
 
+
+            {/* Mobile Sidebar Overlay */}
+            {isMobileSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                />
+            )}
+
             {/* Main Editor Area */}
-            <div className="flex-1 lg:ml-80 space-y-8">
+            <div className="flex-1 w-full lg:ml-80 space-y-8">
 
                 {/* Header Actions */}
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-900/80 backdrop-blur-xl p-6 rounded-2xl border border-gray-800 sticky top-24 z-40 shadow-2xl">
-                    <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        className="bg-transparent text-2xl md:text-3xl font-bold outline-none text-white placeholder-gray-600 w-full"
-                        placeholder="Enter Presentation Name..."
-                    />
+                <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-900/80 backdrop-blur-xl p-4 lg:p-6 rounded-2xl border border-gray-800 sticky top-4 lg:top-24 z-40 shadow-2xl">
+
+                    {/* Mobile Menu Button */}
+                    <div className="flex items-center gap-4 w-full md:w-auto">
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            className="lg:hidden p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                        >
+                            <Menu className="w-6 h-6" />
+                        </button>
+
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            className="bg-transparent text-xl md:text-3xl font-bold outline-none text-white placeholder-gray-600 w-full"
+                            placeholder="Enter Presentation Name..."
+                        />
+                    </div>
                     <div className="flex gap-3 flex-shrink-0">
                         <button
                             onClick={handleSaveQuiz}
@@ -314,99 +416,45 @@ const CreateQuiz = () => {
                                     className="w-full bg-transparent text-3xl md:text-4xl font-bold text-center outline-none border-b-2 border-gray-700 focus:border-primary-500 pb-4 transition-colors placeholder-gray-600"
                                 />
 
-                                {/* Image Upload */}
+                                {/* Question Images Upload */}
                                 <div className="flex flex-col items-center gap-4">
-                                    <div className="flex gap-2 w-full max-w-lg">
-                                        <input
-                                            type="text"
-                                            value={q.imageUrl || ""}
-                                            onChange={(e) => updateQuestion(qIndex, 'imageUrl', e.target.value)}
-                                            placeholder="Paste Image URL or Upload"
-                                            className="bg-gray-900/50 border border-gray-700 rounded-lg px-4 py-2 text-sm text-blue-400 placeholder-gray-600 outline-none focus:border-blue-500 flex-1 transition-all"
-                                        />
-                                        <label className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold cursor-pointer transition-colors flex items-center gap-2">
-                                            <Upload className="w-4 h-4" />
-                                            {q.uploading ? "Uploading..." : "Upload"}
+                                    <div className="flex flex-wrap gap-4 justify-center">
+                                        {/* Display Existing Images (from array or legacy single) */}
+                                        {(q.images || (q.imageUrl ? [q.imageUrl] : [])).map((imgUrl, imgIdx) => (
+                                            <div key={imgIdx} className="relative group">
+                                                <img src={imgUrl} alt={`Slide ${imgIdx}`} className="h-48 rounded-xl border border-gray-700 object-cover shadow-lg" />
+                                                <button
+                                                    onClick={() => {
+                                                        const currentImages = q.images || (q.imageUrl ? [q.imageUrl] : []);
+                                                        const newImages = currentImages.filter((_, i) => i !== imgIdx);
+                                                        updateQuestion(qIndex, 'images', newImages);
+                                                        updateQuestion(qIndex, 'imageUrl', null); // clear legacy
+                                                    }}
+                                                    className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <X className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        {/* Upload Button */}
+                                        <div className="h-48 w-48 border-2 border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-blue-500 hover:text-blue-400 transition-all cursor-pointer relative bg-gray-900/50">
+                                            <Upload className="w-8 h-8" />
+                                            <span className="text-xs font-bold">
+                                                {q.uploading ? "Uploading..." : "Add Image"}
+                                            </span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
-                                                className="hidden"
-                                                onChange={async (e) => {
-                                                    const file = e.target.files[0];
-                                                    if (!file) return;
-
-                                                    // Set uploading state
-                                                    updateQuestion(qIndex, 'uploading', true);
-
-                                                    try {
-                                                        const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dwva5ae36';
-                                                        let uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'Hitam_ai';
-
-                                                        // Sanitize title for folder
-                                                        const safeTitle = title.replace(/[^a-zA-Z0-9]/g, "_");
-                                                        const folderPath = `Hitam_ai/Quize/${safeTitle}`;
-
-                                                        // Helper to upload with specific preset
-                                                        const uploadWithPreset = async (preset) => {
-                                                            const formData = new FormData();
-                                                            formData.append('file', file);
-                                                            formData.append('upload_preset', preset);
-                                                            formData.append('folder', folderPath);
-
-                                                            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
-                                                                method: 'POST',
-                                                                body: formData
-                                                            });
-
-                                                            if (!res.ok) throw new Error('Upload failed');
-                                                            return await res.json();
-                                                        };
-
-                                                        let data;
-                                                        try {
-                                                            // Try 1: Configured Preset
-                                                            data = await uploadWithPreset(uploadPreset);
-                                                        } catch (err) {
-                                                            console.warn(`Preset ${uploadPreset} failed. Trying fallbacks...`);
-                                                            // Try 2: Fallbacks
-                                                            const fallbacks = ['ml_default', 'default', 'cloud_default'];
-                                                            for (const fb of fallbacks) {
-                                                                try {
-                                                                    data = await uploadWithPreset(fb);
-                                                                    console.log(`Success with preset: ${fb}`);
-                                                                    break;
-                                                                } catch (e) { continue; }
-                                                            }
-                                                        }
-
-                                                        if (data && data.secure_url) {
-                                                            updateQuestion(qIndex, 'imageUrl', data.secure_url);
-                                                        } else {
-                                                            throw new Error("All upload attempts failed. Please check Cloudinary presets.");
-                                                        }
-
-                                                    } catch (error) {
-                                                        console.error("Error uploading:", error);
-                                                        alert("Error uploading image: " + error.message);
-                                                    } finally {
-                                                        updateQuestion(qIndex, 'uploading', false);
-                                                    }
-                                                }}
+                                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                                onChange={(e) => handleImageUpload(e, qIndex)}
+                                                disabled={q.uploading}
                                             />
-                                        </label>
-                                    </div>
-
-                                    {q.imageUrl && (
-                                        <div className="relative group">
-                                            <img src={q.imageUrl} alt="Preview" className="h-48 rounded-xl border border-gray-700 object-cover shadow-lg" />
-                                            <button
-                                                onClick={() => updateQuestion(qIndex, 'imageUrl', '')}
-                                                className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <X className="w-4 h-4" />
-                                            </button>
                                         </div>
-                                    )}
+                                    </div>
+                                    <div className="text-xs text-slate-500 font-medium">
+                                        Tip: You can upload multiple images for a carousel view.
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -419,6 +467,20 @@ const CreateQuiz = () => {
                                                 >
                                                     <CheckCircle2 className="w-5 h-5" />
                                                 </button>
+
+                                                {/* Option Image Preview */}
+                                                {opt.imageUrl && (
+                                                    <div className="relative group w-12 h-12 flex-shrink-0">
+                                                        <img src={opt.imageUrl} alt="Opt" className="w-full h-full object-cover rounded-lg border border-gray-700" />
+                                                        <button
+                                                            onClick={() => updateOption(qIndex, oIndex, 'imageUrl', '')}
+                                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        >
+                                                            <X className="w-2 h-2" />
+                                                        </button>
+                                                    </div>
+                                                )}
+
                                                 <input
                                                     type="text"
                                                     value={opt.text}
@@ -426,6 +488,18 @@ const CreateQuiz = () => {
                                                     placeholder={`Option ${oIndex + 1}`}
                                                     className="flex-1 bg-transparent outline-none font-medium text-lg min-w-0"
                                                 />
+
+                                                {/* Option Image Upload Trigger */}
+                                                <label className="p-2 text-gray-500 hover:text-blue-400 cursor-pointer transition-colors relative">
+                                                    <Upload className="w-4 h-4" />
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={(e) => handleImageUpload(e, qIndex, true, oIndex)}
+                                                    />
+                                                </label>
+
                                                 {q.options.length > 2 && (
                                                     <button onClick={() => {
                                                         const newQs = [...questions];

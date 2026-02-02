@@ -148,7 +148,7 @@ const HostPanel = () => {
     const leaderboard = session.status === 'showing_results' || session.status === 'finished' ? getLeaderboard() : [];
 
     return (
-        <div className="min-h-screen bg-slate-900 text-white flex flex-col">
+        <div className="min-h-screen bg-slate-900 text-white flex flex-col px-0 sm:px-0">
 
             {/* Top Bar */}
             <div className="bg-slate-800 p-4 shadow-lg flex justify-between items-center z-10 sticky top-0">
@@ -177,11 +177,11 @@ const HostPanel = () => {
 
                     <div className="z-10 text-center space-y-12 w-full max-w-4xl">
                         <div className="space-y-4">
-                            <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight animate-fade-in-up">
+                            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white tracking-tight animate-fade-in-up">
                                 Join the Game!
                             </h1>
-                            <div className="inline-block bg-white p-4 rounded-3xl shadow-2xl animate-scale-in">
-                                <QRCode value={`https://metomer.app/join?pin=${session.pin}`} size={200} />
+                            <div className="inline-block bg-white p-2 md:p-4 rounded-3xl shadow-2xl animate-scale-in">
+                                <QRCode value={`https://metomer.app/join?pin=${session.pin}`} size={window.innerWidth < 768 ? 150 : 200} />
                             </div>
                         </div>
 
@@ -306,8 +306,8 @@ const HostPanel = () => {
                     </div>
 
                     {/* Leaderboard Table */}
-                    <div className="w-full max-w-4xl bg-slate-800/50 backdrop-blur rounded-3xl border border-slate-700 overflow-hidden shadow-2xl">
-                        <table className="w-full text-left">
+                    <div className="w-full max-w-4xl bg-slate-800/50 backdrop-blur rounded-3xl border border-slate-700 overflow-hidden shadow-2xl overflow-x-auto">
+                        <table className="w-full text-left min-w-[600px]">
                             <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-bold tracking-wider">
                                 <tr>
                                     <th className="p-6">#</th>

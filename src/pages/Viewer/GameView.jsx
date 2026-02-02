@@ -217,77 +217,97 @@ const GameView = () => {
     const isMulti = question.type === 'multiple';
 
     return (
-        <div className="min-h-screen bg-slate-900 flex flex-col p-4">
-            {/* Header */}
-            <div className="flex justify-between items-center text-white mb-8 pt-4">
-                <div className="text-sm text-slate-400 font-bold uppercase tracking-wider">
-                    Q{session.currentQuestionIndex + 1}
-                </div>
-                {isMulti && <div className="text-xs bg-purple-600 px-2 py-1 rounded font-bold uppercase">Multi-Select</div>}
-            </div>
 
-            {/* Question Text */}
-            <div className="bg-slate-800/50 p-6 rounded-2xl mb-8 border border-slate-700 relative overflow-hidden flex flex-col items-center gap-6">
-                {/* Progress Bar */}
-                <div className="absolute top-0 left-0 h-1 bg-blue-600 transition-all duration-1000 linear" style={{ width: `${(timeLeft / (question.timeLimit || 30)) * 100}%` }}></div>
+        <div className="min-h-screen bg-slate-900 flex flex-col items-center p-4">
+            <div className="w-full max-w-3xl flex flex-col flex-1 relative">
 
-                {question.imageUrl && (
-                    <img src={question.imageUrl} alt="Question" className="max-h-64 rounded-xl border border-slate-700 shadow-lg object-contain w-full" />
-                )}
-
-                <div className="flex justify-between items-start w-full">
-                    <h2 className="text-xl md:text-2xl font-bold text-white text-center flex-1">{question.text}</h2>
+                {/* Header */}
+                <div className="flex justify-between items-center text-white mb-6 pt-2">
+                    <div className="text-sm text-slate-400 font-bold uppercase tracking-wider">
+                        Question {session.currentQuestionIndex + 1}
+                    </div>
+                    {isMulti && <div className="text-xs bg-purple-600 px-3 py-1 rounded-full font-bold uppercase tracking-wide shadow-lg shadow-purple-900/20">Multi-Select</div>}
                 </div>
 
-                <div className={`text-sm font-mono font-bold px-3 py-1 rounded-full ${timeLeft <= 5 ? 'text-red-500 bg-red-500/10' : 'text-blue-400 bg-blue-500/10'}`}>
-                    {timeLeft}s
-                </div>
-            </div>
+                {/* Question Area */}
+                <div className="bg-slate-800/50 backdrop-blur-sm p-6 md:p-8 rounded-3xl mb-8 border border-slate-700/50 relative overflow-hidden flex flex-col items-center gap-6 shadow-2xl">
+                    {/* Progress Bar */}
+                    <div className="absolute top-0 left-0 h-1.5 bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-1000 linear" style={{ width: `${(timeLeft / (question.timeLimit || 30)) * 100}%` }}></div>
 
-            {/* Answers Grid */}
-            <div className="grid grid-cols-1 gap-4 flex-1 content-start pb-24">
-                {question.options.map((opt, i) => {
-                    const isSelected = selectedOptions.includes(i);
-                    return (
+                    {/* Question Images - Carousel or Stack */}
+                    <div className="w-full flex justify-center gap-4 flex-wrap">
+                        {(question.images || (question.imageUrl ? [question.imageUrl] : [])).map((imgUrl, idx) => (
+                            <div key={idx} className="max-w-md w-full aspect-video bg-black/20 rounded-xl overflow-hidden flex items-center justify-center border border-slate-700/50">
+                                <img src={imgUrl} alt={`Slide ${idx}`} className="max-h-full max-w-full object-contain" />
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="flex flex-col items-center gap-4 w-full">
+                        <h2 className="text-2xl md:text-3xl font-bold text-white text-center leading-tight">{question.text}</h2>
+                        <div className={`text-sm font-mono font-bold px-4 py-1.5 rounded-full border ${timeLeft <= 5 ? 'text-red-400 border-red-500/30 bg-red-500/10 animate-pulse' : 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10'}`}>
+                            {timeLeft}s remaining
+                        </div>
+                    </div>
+                </div>
+
+                {/* Answers Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-32 w-full">
+                    {question.options.map((opt, i) => {
+                        const isSelected = selectedOptions.includes(i);
+                        return (
+                            <button
+                                key={i}
+                                disabled={hasAnswered || timeLeft === 0}
+                                onClick={() => toggleOption(i)}
+                                className={`
+                                    p-5 rounded-2xl font-bold text-lg text-left shadow-lg transition-all transform group relative overflow-hidden flex flex-col gap-3
+                                    ${hasAnswered
+                                        ? (isSelected
+                                            ? 'bg-blue-600 ring-4 ring-blue-500/30 scale-100 z-10'
+                                            : 'bg-slate-800/80 opacity-50 grayscale')
+                                        : (isSelected
+                                            ? 'bg-blue-600 ring-4 ring-blue-500/30 scale-[1.02] shadow-blue-900/20 z-10'
+                                            : 'bg-slate-800 hover:bg-slate-700 hover:scale-[1.02] hover:shadow-xl border border-slate-700 hover:border-slate-600')
+                                    }
+                                `}
+                            >
+                                {/* Option Image if exists */}
+                                {opt.imageUrl && (
+                                    <div className="h-32 w-full rounded-xl overflow-hidden mb-2 bg-black/20">
+                                        <img src={opt.imageUrl} alt="Option" className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between items-center w-full relative z-10">
+                                    <span className="pr-4">{opt.text}</span>
+                                    {/* Checkbox/Radio Icon */}
+                                    <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${isSelected ? 'border-white bg-white text-blue-600' : 'border-slate-500 group-hover:border-slate-400'}`}>
+                                        {isSelected && <CheckCircle2 className="w-5 h-5" />}
+                                    </div>
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Submit Button Fixed Container */}
+                <div className="fixed bottom-0 left-0 right-0 p-4 pb-8 bg-gradient-to-t from-slate-900 via-slate-900/95 to-transparent z-50 pointer-events-none flex justify-center safe-pb">
+                    <div className="w-full max-w-3xl pointer-events-auto">
                         <button
-                            key={i}
-                            disabled={hasAnswered || timeLeft === 0}
-                            onClick={() => toggleOption(i)}
-                            className={`
-                                p-6 rounded-xl font-bold text-lg text-left shadow-lg transition-all transform flex justify-between items-center
-                                ${hasAnswered
-                                    ? (isSelected
-                                        ? 'bg-blue-600 ring-4 ring-blue-400/50 scale-100'
-                                        : 'bg-slate-800 opacity-50 grayscale')
-                                    : (isSelected
-                                        ? 'bg-blue-600 ring-2 ring-blue-400 scale-[1.02]'
-                                        : 'bg-slate-700 hover:bg-slate-600 hover:scale-[1.01]')
+                            onClick={handleSubmitAnswer}
+                            disabled={hasAnswered || timeLeft === 0 || selectedOptions.length === 0}
+                            className={`w-full text-white text-xl font-bold py-4 rounded-2xl shadow-xl transition-all active:scale-95 flex items-center justify-center gap-2
+                                ${hasAnswered || timeLeft === 0 || selectedOptions.length === 0
+                                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 shadow-blue-900/20'
                                 }
                             `}
                         >
-                            <span>{opt.text}</span>
-                            {/* Checkbox/Radio Icon */}
-                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${isSelected ? 'border-white bg-white text-blue-600' : 'border-slate-500'}`}>
-                                {isSelected && <CheckCircle2 className="w-4 h-4" />}
-                            </div>
+                            {hasAnswered ? "Answer Submitted" : "Submit Answer"}
                         </button>
-                    );
-                })}
-            </div>
-
-            {/* Submit Button (Always shown for clarity, or update logic to auto-submit for single?) 
-                Let's use Explicit Submit for everything to avoid accidental clicks, 
-                OR Auto-submit for single if desired. 
-                For now -> Explicit Submit is safer for UX unless requested otherwise. 
-            */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-900/80 backdrop-blur border-t border-slate-800">
-                <button
-                    onClick={handleSubmitAnswer}
-                    disabled={hasAnswered || timeLeft === 0 || selectedOptions.length === 0}
-                    className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xl font-bold py-4 rounded-xl shadow-lg transition-all active:scale-95"
-                >
-                    {hasAnswered ? "Answer Submitted" : "Submit Answer"}
-                </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

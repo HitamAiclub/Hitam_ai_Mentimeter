@@ -87,7 +87,7 @@ const JoinGame = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 relative overflow-hidden">
+        <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4 relative overflow-x-hidden">
             {/* Background Decorations */}
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary-600/20 rounded-full blur-[100px]"></div>
