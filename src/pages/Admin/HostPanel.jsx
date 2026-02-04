@@ -14,25 +14,27 @@ const HostPanel = () => {
     const [answers, setAnswers] = useState([]);
     const [timeLeft, setTimeLeft] = useState(0);
 
-    // Timer Logic
+    // Timer Logic - Synced
     useEffect(() => {
-        if (session && session.status === 'active') {
+        if (session && session.status === 'active' && session.questionExpiresAt) {
+            const updateTimer = () => {
+                const now = Date.now();
+                const remaining = Math.max(0, Math.ceil((session.questionExpiresAt - now) / 1000));
+                setTimeLeft(remaining);
+
+                // Optional: Auto-trigger reveal if host wants automation? 
+                // For now just stay at 0.
+            };
+
+            updateTimer(); // Initial call
+            const timer = setInterval(updateTimer, 1000);
+            return () => clearInterval(timer);
+        } else if (session && session.status === 'active') {
+            // Fallback for legacy sessions without expiresAt
             const currentQ = session.questions[session.currentQuestionIndex];
             setTimeLeft(currentQ.timeLimit || 30);
-
-            const timer = setInterval(() => {
-                setTimeLeft((prev) => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-
-            return () => clearInterval(timer);
         }
-    }, [session?.id, session?.status, session?.currentQuestionIndex]);
+    }, [session?.id, session?.status, session?.currentQuestionIndex, session?.questionExpiresAt]);
 
     // 1. Listen to Session & Participants
     useEffect(() => {
@@ -82,9 +84,13 @@ const HostPanel = () => {
         const nextIndex = session.currentQuestionIndex + 1;
 
         if (nextIndex < session.questions.length) {
+            const nextQ = session.questions[nextIndex];
+            const expiresAt = Date.now() + ((nextQ.timeLimit || 30) * 1000);
+
             await updateDoc(doc(db, "sessions", sessionId), {
                 currentQuestionIndex: nextIndex,
-                status: 'active' // Back to active for next question
+                status: 'active', // Back to active for next question
+                questionExpiresAt: expiresAt
             });
         } else {
             await updateDoc(doc(db, "sessions", sessionId), {
@@ -94,8 +100,12 @@ const HostPanel = () => {
     };
 
     const handleStartGame = async () => {
+        const firstQ = session.questions[0];
+        const expiresAt = Date.now() + ((firstQ.timeLimit || 30) * 1000);
+
         await updateDoc(doc(db, "sessions", sessionId), {
-            status: 'active'
+            status: 'active',
+            questionExpiresAt: expiresAt
         });
     };
 
@@ -265,10 +275,52 @@ const HostPanel = () => {
                                 }
 
                                 return (
-                                    <div key={i} className={`${cardClass} p-8 rounded-2xl border-2 flex items-center justify-between transition-all duration-500 relative overflow-hidden`}>
-                                        <div className="relative z-10 flex justify-between w-full items-center">
-                                            <span className="text-2xl font-bold">{opt.text}</span>
-                                            <span className="bg-slate-900/50 px-4 py-2 rounded-xl font-mono text-xl font-bold text-white border border-white/10 shadow-inner">
+                                    <div key={i} className={`${cardClass} p-6 rounded-2xl border-2 flex flex-col gap-4 transition-all duration-500 relative overflow-hidden h-full`}>
+                                        {/* Option Image */}
+                                        {/* Option Image */}
+                                        {(() => {
+                                            const images = opt.images && opt.images.length > 0 ? opt.images : (opt.imageUrl ? [opt.imageUrl] : []);
+
+                                            if (images.length === 0) return null;
+
+                                            return (
+                                                <div className="w-full h-48 flex-shrink-0 flex items-center justify-center rounded-xl overflow-hidden relative">
+                                                    {images.map((img, idx) => (
+                                                        <img
+                                                            key={idx}
+                                                            src={img}
+                                                            alt="Option"
+                                                            className={`w-full h-full object-contain absolute inset-0 transition-opacity duration-1000 ${
+                                                                // Simple time-based inline rotation if strictly needed without extra component state complexity
+                                                                // But let's rely on a key-based re-render or CSS animation? 
+                                                                // CSS animation is cleaner for "no state clutter" in a map loop.
+                                                                // Actually, infinite CSS animation is easiest.
+                                                                images.length > 1 ? 'animate-pulse-slow' : ''
+                                                                }`}
+                                                            style={{
+                                                                opacity: images.length > 1 ? undefined : 1, // Let CSS handle it or just show
+                                                                animation: images.length > 1 ? `fade-cycle ${images.length * 3}s infinite ${idx * 3}s` : 'none'
+                                                            }}
+                                                            onError={(e) => e.target.style.display = 'none'}
+                                                        />
+                                                    ))}
+                                                    {/* Style for the fade cycle */}
+                                                    <style>{`
+                                                @keyframes fade-cycle {
+                                                    0% { opacity: 0; z-index: 0; }
+                                                    10% { opacity: 1; z-index: 10; }
+                                                    30% { opacity: 1; z-index: 10; }
+                                                    40% { opacity: 0; z-index: 0; }
+                                                    100% { opacity: 0; z-index: 0; }
+                                                }
+                                            `}</style>
+                                                </div>
+                                            );
+                                        })()}
+
+                                        <div className="relative z-10 flex justify-between w-full items-center flex-1">
+                                            <span className="text-2xl font-bold break-words">{opt.text}</span>
+                                            <span className="bg-slate-900/50 px-4 py-2 rounded-xl font-mono text-xl font-bold text-white border border-white/10 shadow-inner flex-shrink-0 ml-4">
                                                 {voteCount}
                                             </span>
                                         </div>

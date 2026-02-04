@@ -13,25 +13,24 @@ const GameView = () => {
     const [questionStartTime, setQuestionStartTime] = useState(null);
     const [timeLeft, setTimeLeft] = useState(0);
 
-    // Timer Logic
+    // Timer Logic - Synced
     useEffect(() => {
-        if (session && session.status === 'active') {
+        if (session && session.status === 'active' && session.questionExpiresAt) {
+            const updateTimer = () => {
+                const now = Date.now();
+                const remaining = Math.max(0, Math.ceil((session.questionExpiresAt - now) / 1000));
+                setTimeLeft(remaining);
+            };
+
+            updateTimer();
+            const timer = setInterval(updateTimer, 1000);
+            return () => clearInterval(timer);
+        } else if (session && session.status === 'active') {
+            // Fallback
             const currentQ = session.questions[session.currentQuestionIndex];
             setTimeLeft(currentQ.timeLimit || 30);
-
-            const timer = setInterval(() => {
-                setTimeLeft((prev) => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-
-            return () => clearInterval(timer);
         }
-    }, [session?.currentQuestionIndex, session?.status]);
+    }, [session?.currentQuestionIndex, session?.status, session?.questionExpiresAt]);
 
     // Get player info from local storage
     const playerId = localStorage.getItem('playerId');
@@ -117,6 +116,11 @@ const GameView = () => {
     };
 
     const handleSubmitAnswer = async () => {
+        // Enforce time limit
+        if (session.questionExpiresAt && Date.now() > session.questionExpiresAt) {
+            return;
+        }
+
         if (hasAnswered || selectedOptions.length === 0) return;
 
         const endTime = Date.now();
@@ -273,11 +277,39 @@ const GameView = () => {
                                 `}
                             >
                                 {/* Option Image if exists */}
-                                {opt.imageUrl && (
-                                    <div className="h-32 w-full rounded-xl overflow-hidden mb-2 bg-black/20">
-                                        <img src={opt.imageUrl} alt="Option" className="w-full h-full object-cover" />
-                                    </div>
-                                )}
+                                {/* Option Image if exists */}
+                                {(() => {
+                                    const images = opt.images && opt.images.length > 0 ? opt.images : (opt.imageUrl ? [opt.imageUrl] : []);
+
+                                    if (images.length === 0) return null;
+
+                                    return (
+                                        <div className="h-32 w-full rounded-xl overflow-hidden mb-2 flex items-center justify-center relative">
+                                            {images.map((img, idx) => (
+                                                <img
+                                                    key={idx}
+                                                    src={img}
+                                                    alt="Option"
+                                                    className="w-full h-full object-contain absolute inset-0"
+                                                    style={{
+                                                        opacity: images.length > 1 ? undefined : 1,
+                                                        animation: images.length > 1 ? `fade-cycle ${images.length * 3}s infinite ${idx * 3}s` : 'none'
+                                                    }}
+                                                    onError={(e) => e.target.style.display = 'none'}
+                                                />
+                                            ))}
+                                            <style>{`
+                                                @keyframes fade-cycle {
+                                                    0% { opacity: 0; z-index: 0; }
+                                                    10% { opacity: 1; z-index: 10; }
+                                                    30% { opacity: 1; z-index: 10; }
+                                                    40% { opacity: 0; z-index: 0; }
+                                                    100% { opacity: 0; z-index: 0; }
+                                                }
+                                            `}</style>
+                                        </div>
+                                    );
+                                })()}
 
                                 <div className="flex justify-between items-center w-full relative z-10">
                                     <span className="pr-4">{opt.text}</span>

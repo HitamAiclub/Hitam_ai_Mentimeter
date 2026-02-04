@@ -213,8 +213,7 @@ const CreateQuiz = () => {
 
         try {
             if (isOption) {
-                // Set option uploading state if we tracked it, for now just UI blocked?
-                // Ideally we'd have a local loading state for options too.
+                // Ideally toggle a specific loading state for this option
             } else {
                 updateQuestion(qIndex, 'uploading', true);
             }
@@ -223,14 +222,15 @@ const CreateQuiz = () => {
 
             if (data && data.secure_url) {
                 if (isOption) {
-                    updateOption(qIndex, oIndex, 'imageUrl', data.secure_url);
+                    const opt = questions[qIndex].options[oIndex];
+                    const currentImages = opt.images || (opt.imageUrl ? [opt.imageUrl] : []);
+                    updateOption(qIndex, oIndex, 'images', [...currentImages, data.secure_url]);
+                    // Clear legacy single image field to avoid duplication in logic, relying on 'images' now
+                    updateOption(qIndex, oIndex, 'imageUrl', null);
                 } else {
-                    // For questions: Append to images array, or set imageUrl if undefined
                     const q = questions[qIndex];
                     const currentImages = q.images || (q.imageUrl ? [q.imageUrl] : []);
                     updateQuestion(qIndex, 'images', [...currentImages, data.secure_url]);
-                    // Clear legacy imageUrl to avoid confusion, or keep it synced?
-                    // Let's rely on 'images' array primarily in UI.
                 }
             }
         } catch (error) {
@@ -358,7 +358,7 @@ const CreateQuiz = () => {
             )}
 
             {/* Main Editor Area */}
-            <div className="flex-1 w-full lg:ml-80 space-y-8">
+            <div className="flex-1 min-w-0 space-y-8">
 
                 {/* Header Actions */}
                 <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-900 md:bg-gray-900/80 backdrop-blur-xl p-4 lg:p-6 rounded-2xl border border-gray-800 sticky top-4 lg:top-24 z-50 shadow-2xl">
@@ -476,18 +476,23 @@ const CreateQuiz = () => {
                                                     <CheckCircle2 className="w-5 h-5" />
                                                 </button>
 
-                                                {/* Option Image Preview */}
-                                                {opt.imageUrl && (
-                                                    <div className="relative group w-12 h-12 flex-shrink-0">
-                                                        <img src={opt.imageUrl} alt="Opt" className="w-full h-full object-cover rounded-lg border border-gray-700" />
+                                                {/* Option Images Preview */}
+                                                {(opt.images || (opt.imageUrl ? [opt.imageUrl] : [])).map((img, idx) => (
+                                                    <div key={idx} className="relative group w-12 h-12 flex-shrink-0">
+                                                        <img src={img} alt="Opt" className="w-full h-full object-cover rounded-lg border border-gray-700" />
                                                         <button
-                                                            onClick={() => updateOption(qIndex, oIndex, 'imageUrl', '')}
-                                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            onClick={() => {
+                                                                const currentImages = opt.images || (opt.imageUrl ? [opt.imageUrl] : []);
+                                                                const newImages = currentImages.filter((_, i) => i !== idx);
+                                                                updateOption(qIndex, oIndex, 'images', newImages);
+                                                                updateOption(qIndex, oIndex, 'imageUrl', null);
+                                                            }}
+                                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
                                                         >
                                                             <X className="w-2 h-2" />
                                                         </button>
                                                     </div>
-                                                )}
+                                                ))}
 
                                                 <input
                                                     type="text"
