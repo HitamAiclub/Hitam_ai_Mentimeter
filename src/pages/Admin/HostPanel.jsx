@@ -257,6 +257,9 @@ const HostPanel = () => {
                             {currentQuestion.options.map((opt, i) => {
                                 // Count votes: Support both new array-based and old scalar answers for safety
                                 const voteCount = answers.filter(a => {
+                                    // Must match current question index
+                                    if (a.questionIndex !== session.currentQuestionIndex) return false;
+
                                     if (a.selectedOptions && Array.isArray(a.selectedOptions)) {
                                         return a.selectedOptions.includes(i);
                                     }

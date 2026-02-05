@@ -55,45 +55,31 @@ const GameView = () => {
         return () => unsub();
     }, [sessionId, navigate]);
 
-    // Reset loop for new questions
+    // Reset state when Question Index changes
     useEffect(() => {
-        if (session && session.status === 'active') {
-            // If we ruled that this is a NEW question (index changed), reset
-            // For now, simpler: if status becomes active, we assume it's time to answer.
-            // Ideally we track questionIndex to prevent answering the SAME question twice if re-rendered.
+        if (session) {
+            // Log for debugging
+            console.log("New Question Detected:", session.currentQuestionIndex);
 
-            // Check if we submitted an answer for THIS question index?
-            // For simplified MVP, we just rely on local state `hasAnswered`.
-            // But if user refreshes, `hasAnswered` is lost. 
-            // We won't fix refresh-persistence perfectly now, but let's at least reset only when index changes.
-        }
-    }, [session?.currentQuestionIndex]);
-
-    // When question becomes active, start timer
-    useEffect(() => {
-        if (session?.status === 'active' && !hasAnswered) {
+            setHasAnswered(false);
+            setIsCorrect(null);
+            setSelectedOptions([]);
             setQuestionStartTime(Date.now());
         }
-    }, [session?.status, session?.currentQuestionIndex]); // Reset timer on new question
-
-    const [selectedOptions, setSelectedOptions] = useState([]); // Array of indices
-
-    // Reset loop for new questions
-    useEffect(() => {
-        if (session && session.status === 'active') {
-            // New question became active?
-        }
     }, [session?.currentQuestionIndex]);
 
-    // Handle "New Question" reset
-    const [lastQuestionIndex, setLastQuestionIndex] = useState(-1);
-    if (session && session.currentQuestionIndex !== lastQuestionIndex) {
-        setHasAnswered(false);
-        setIsCorrect(null);
-        setSelectedOptions([]);
-        setLastQuestionIndex(session.currentQuestionIndex);
-        setQuestionStartTime(Date.now());
-    }
+    // Timer Start Logic (Separate to ensure it runs on status change too if needed)
+    useEffect(() => {
+        if (session?.status === 'active' && !hasAnswered) {
+            // Only reset time if we haven't answered (or it's a new question flow)
+            // Actually, the main reset handles the 'new question' case.
+            // This is mostly for 'Waiting -> Active' transition for Q1.
+            // But we don't want to overwrite it if we are mid-question?
+            // Let's rely on the main reset for now, but ensure we have the state var.
+        }
+    }, [session?.status]);
+
+    const [selectedOptions, setSelectedOptions] = useState([]); // Array of indices
 
     const toggleOption = (index) => {
         if (hasAnswered) return;
