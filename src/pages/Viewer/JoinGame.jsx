@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, query, where, getDocs, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { ArrowRight, User, Hash, Mail, Type } from 'lucide-react';
@@ -13,14 +13,26 @@ const JoinGame = () => {
 
     // Dynamic Form Data
     const [formData, setFormData] = useState({});
+    const [searchParams] = useSearchParams();
+
+    // Check for PIN in URL
+    useEffect(() => {
+        const urlPin = searchParams.get("pin");
+        if (urlPin) {
+            setPin(urlPin);
+            verifyPin(urlPin);
+        }
+    }, [searchParams]);
 
     // Step 1: Verify PIN
-    const handlePinSubmit = async (e) => {
-        e.preventDefault();
+    const verifyPin = async (paramPin) => {
+        const pinToVerify = paramPin || pin;
+        if (!pinToVerify || pinToVerify.length < 6) return;
+
         setLoading(true);
 
         try {
-            const q = query(collection(db, "sessions"), where("pin", "==", pin), where("status", "in", ["waiting", "active"]));
+            const q = query(collection(db, "sessions"), where("pin", "==", pinToVerify), where("status", "in", ["waiting", "active"]));
             const querySnapshot = await getDocs(q);
 
             if (!querySnapshot.empty) {
@@ -36,6 +48,8 @@ const JoinGame = () => {
                     initialData[field.id] = "";
                 });
                 setFormData(initialData);
+                // Also update the local pin state if it came from URL
+                if (paramPin) setPin(paramPin);
 
             } else {
                 alert("Invalid or expired PIN");
@@ -46,6 +60,11 @@ const JoinGame = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handlePinSubmit = (e) => {
+        e.preventDefault();
+        verifyPin();
     };
 
     // Step 2: Submit Details

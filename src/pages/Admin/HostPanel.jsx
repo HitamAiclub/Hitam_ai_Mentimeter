@@ -191,7 +191,7 @@ const HostPanel = () => {
                                 Join the Game!
                             </h1>
                             <div className="inline-block bg-white p-2 md:p-4 rounded-3xl shadow-2xl animate-scale-in">
-                                <QRCode value={`https://metomer.app/join?pin=${session.pin}`} size={window.innerWidth < 768 ? 150 : 200} />
+                                <QRCode value={`${window.location.origin}/join?pin=${session.pin}`} size={window.innerWidth < 768 ? 150 : 200} />
                             </div>
                         </div>
 
