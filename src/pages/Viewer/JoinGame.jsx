@@ -230,11 +230,6 @@ const JoinGame = () => {
                     )}
                 </div>
             </div>
-
-            {/* Debug Info (Temporary) */}
-            <div className="fixed bottom-2 left-0 w-full text-center text-xs text-gray-500 font-mono pointer-events-none opacity-50">
-                Debug: URL_PIN={searchParams.get("pin") || "None"} | Checking={isCheckingUrl.toString()} | Step={step}
-            </div>
         </div>
     );
 };
