@@ -9,6 +9,7 @@ const JoinGame = () => {
     const [step, setStep] = useState(1); // 1: PIN, 2: Details
     const [pin, setPin] = useState("");
     const [loading, setLoading] = useState(false);
+    const [isCheckingUrl, setIsCheckingUrl] = useState(true); // Default to true to prevent flash
     const [sessionData, setSessionData] = useState(null);
 
     // Dynamic Form Data
@@ -20,14 +21,21 @@ const JoinGame = () => {
         const urlPin = searchParams.get("pin");
         if (urlPin) {
             setPin(urlPin);
+            // Verify immediately
             verifyPin(urlPin);
+        } else {
+            // No PIN in URL, allow manual entry immediately
+            setIsCheckingUrl(false);
         }
     }, [searchParams]);
 
     // Step 1: Verify PIN
     const verifyPin = async (paramPin) => {
         const pinToVerify = paramPin || pin;
-        if (!pinToVerify || pinToVerify.length < 6) return;
+        if (!pinToVerify || pinToVerify.length < 6) {
+            setIsCheckingUrl(false);
+            return;
+        }
 
         setLoading(true);
 
@@ -52,13 +60,15 @@ const JoinGame = () => {
                 if (paramPin) setPin(paramPin);
 
             } else {
-                alert("Invalid or expired PIN");
+                if (paramPin) alert("Invalid or expired PIN link");
+                else alert("Invalid or expired PIN");
             }
         } catch (error) {
             console.error("Error joining:", error);
             alert("Error joining game");
         } finally {
             setLoading(false);
+            setIsCheckingUrl(false);
         }
     };
 
@@ -122,85 +132,94 @@ const JoinGame = () => {
 
                 <div className="bg-gray-800/50 backdrop-blur-xl border border-gray-700 p-8 rounded-3xl shadow-2xl">
 
-                    {step === 1 ? (
-                        <form onSubmit={handlePinSubmit} className="space-y-6">
-                            <div className="text-center space-y-2">
-                                <h2 className="text-2xl font-bold text-white">Enter Game PIN</h2>
-                                <p className="text-gray-400 text-sm">Join the session using the code on the screen</p>
-                            </div>
-
-                            <input
-                                type="text"
-                                value={pin}
-                                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} // Only numbers, max 6
-                                placeholder="000000"
-                                className="w-full bg-gray-900/80 border-2 border-gray-700 focus:border-primary-500 rounded-2xl py-4 text-center text-3xl font-bold tracking-[0.5em] text-white outline-none transition-colors placeholder-gray-700"
-                                autoFocus
-                            />
-
-                            <button
-                                type="submit"
-                                disabled={loading || pin.length < 6}
-                                className="w-full bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary-600/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
-                            >
-                                {loading ? "Finding Session..." : <>Enter <ArrowRight className="w-5 h-5" /></>}
-                            </button>
-                        </form>
+                    {/* Loading State for Auto-Join */}
+                    {isCheckingUrl ? (
+                        <div className="py-12 flex flex-col items-center justify-center space-y-4">
+                            <div className="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="text-white font-bold text-lg animate-pulse">Verifying Link...</p>
+                        </div>
                     ) : (
-                        <form onSubmit={handleDetailsSubmit} className="space-y-6 animate-fade-in-up">
-                            <div className="text-center space-y-2">
-                                <h2 className="text-2xl font-bold text-white">Join {sessionData?.title || "Quiz"}</h2>
-                                <p className="text-gray-400 text-sm">Please enter your details to start</p>
-                            </div>
+                        <>
+                            {step === 1 ? (
+                                <form onSubmit={handlePinSubmit} className="space-y-6">
+                                    <div className="text-center space-y-2">
+                                        <h2 className="text-2xl font-bold text-white">Enter Game PIN</h2>
+                                        <p className="text-gray-400 text-sm">Join the session using the code on the screen</p>
+                                    </div>
 
-                            <div className="space-y-4">
-                                {sessionData?.participantFields?.map((field) => (
-                                    <div key={field.id} className="space-y-1">
-                                        <label className="text-xs font-bold uppercase text-gray-500 ml-1">{field.label}</label>
-                                        <div className="relative">
-                                            <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                                                {getIconForType(field.type)}
+                                    <input
+                                        type="text"
+                                        value={pin}
+                                        onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))} // Only numbers, max 6
+                                        placeholder="000000"
+                                        className="w-full bg-gray-900/80 border-2 border-gray-700 focus:border-primary-500 rounded-2xl py-4 text-center text-3xl font-bold tracking-[0.5em] text-white outline-none transition-colors placeholder-gray-700"
+                                        autoFocus
+                                    />
+
+                                    <button
+                                        type="submit"
+                                        disabled={loading || pin.length < 6}
+                                        className="w-full bg-primary-600 hover:bg-primary-500 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-primary-600/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                                    >
+                                        {loading ? "Finding Session..." : <>Enter <ArrowRight className="w-5 h-5" /></>}
+                                    </button>
+                                </form>
+                            ) : (
+                                <form onSubmit={handleDetailsSubmit} className="space-y-6 animate-fade-in-up">
+                                    <div className="text-center space-y-2">
+                                        <h2 className="text-2xl font-bold text-white">Join {sessionData?.title || "Quiz"}</h2>
+                                        <p className="text-gray-400 text-sm">Please enter your details to start</p>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {sessionData?.participantFields?.map((field) => (
+                                            <div key={field.id} className="space-y-1">
+                                                <label className="text-xs font-bold uppercase text-gray-500 ml-1">{field.label}</label>
+                                                <div className="relative">
+                                                    <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                                                        {getIconForType(field.type)}
+                                                    </div>
+                                                    <input
+                                                        type={field.type || "text"} // Use the configured type!
+                                                        value={formData[field.id] || ""}
+                                                        onChange={(e) => setFormData({ ...formData, [field.id]: e.target.value })}
+                                                        required={field.required}
+                                                        placeholder={`Enter your ${field.label.toLowerCase()}`}
+                                                        className="w-full bg-gray-900/80 border border-gray-700 focus:border-primary-500 rounded-xl py-3 pl-12 pr-4 text-white outline-none transition-colors"
+                                                    />
+                                                </div>
                                             </div>
-                                            <input
-                                                type={field.type || "text"} // Use the configured type!
-                                                value={formData[field.id] || ""}
-                                                onChange={(e) => setFormData({ ...formData, [field.id]: e.target.value })}
-                                                required={field.required}
-                                                placeholder={`Enter your ${field.label.toLowerCase()}`}
-                                                className="w-full bg-gray-900/80 border border-gray-700 focus:border-primary-500 rounded-xl py-3 pl-12 pr-4 text-white outline-none transition-colors"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
+                                        ))}
 
-                                {/* Fallback if no fields defined */}
-                                {(!sessionData?.participantFields || sessionData.participantFields.length === 0) && (
-                                    <div className="relative">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                                            <User className="w-5 h-5 text-gray-400" />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={formData.name || ""}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            required
-                                            placeholder="Choose a nickname"
-                                            className="w-full bg-gray-900/80 border border-gray-700 focus:border-primary-500 rounded-xl py-3 pl-12 pr-4 text-white outline-none transition-colors"
-                                        />
+                                        {/* Fallback if no fields defined */}
+                                        {(!sessionData?.participantFields || sessionData.participantFields.length === 0) && (
+                                            <div className="relative">
+                                                <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                                                    <User className="w-5 h-5 text-gray-400" />
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={formData.name || ""}
+                                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                                    required
+                                                    placeholder="Choose a nickname"
+                                                    className="w-full bg-gray-900/80 border border-gray-700 focus:border-primary-500 rounded-xl py-3 pl-12 pr-4 text-white outline-none transition-colors"
+                                                />
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                            </div>
 
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-500 hover:to-purple-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
-                            >
-                                {loading ? "Joining..." : <>Ready to Play <ArrowRight className="w-5 h-5" /></>}
-                            </button>
-                        </form>
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="w-full bg-gradient-to-r from-primary-600 to-purple-600 hover:from-primary-500 hover:to-purple-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+                                    >
+                                        {loading ? "Joining..." : <>Ready to Play <ArrowRight className="w-5 h-5" /></>}
+                                    </button>
+                                </form>
+                            )}
+                        </>
                     )}
-
                 </div>
             </div>
         </div>
