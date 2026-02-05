@@ -37,9 +37,17 @@ const JoinGame = () => {
             return;
         }
 
+        // Check for URL PIN validity
+        if (!pinToVerify || pinToVerify === "undefined" || pinToVerify === "null") {
+            console.log("Invalid PIN format");
+            setIsCheckingUrl(false);
+            return;
+        }
+
         setLoading(true);
 
         try {
+            console.log("Verifying PIN:", pinToVerify);
             const q = query(collection(db, "sessions"), where("pin", "==", pinToVerify), where("status", "in", ["waiting", "active"]));
             const querySnapshot = await getDocs(q);
 
@@ -221,6 +229,11 @@ const JoinGame = () => {
                         </>
                     )}
                 </div>
+            </div>
+
+            {/* Debug Info (Temporary) */}
+            <div className="fixed bottom-2 left-0 w-full text-center text-xs text-gray-500 font-mono pointer-events-none opacity-50">
+                Debug: URL_PIN={searchParams.get("pin") || "None"} | Checking={isCheckingUrl.toString()} | Step={step}
             </div>
         </div>
     );
