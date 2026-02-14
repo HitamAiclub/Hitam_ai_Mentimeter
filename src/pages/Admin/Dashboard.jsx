@@ -1,17 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Plus, Play, MoreVertical, Trash2, Edit, Loader2, Home, FileText, Users, LogOut, BarChart2, Download, Clock, Activity } from 'lucide-react';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Plus, Play, MoreVertical, Trash2, Edit, Loader2, Home, FileText, Users, LogOut, BarChart2, Download, Clock, Activity, Sun, Moon } from 'lucide-react';
 import { collection, query, orderBy, getDocs, deleteDoc, doc, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getAuth, signOut } from 'firebase/auth';
+
+import { useTheme } from '../../context/ThemeContext';
 
 const Dashboard = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const auth = getAuth();
+    const { theme, toggleTheme } = useTheme();
 
     // Active Tab State
-    const [activeTab, setActiveTab] = useState('home');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const activeTab = searchParams.get('tab') || 'home';
+
+    const handleTabChange = (tabId) => {
+        setSearchParams({ tab: tabId });
+    };
 
     // Data States
     const [quizzes, setQuizzes] = useState([]);
@@ -208,35 +216,35 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white font-sans flex flex-col">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white font-sans flex flex-col transition-colors duration-300">
 
             {/* Top Navigation Bar */}
-            <nav className="fixed top-0 w-full bg-gray-900/80 backdrop-blur-xl border-b border-gray-800 z-50">
+            <nav className="fixed top-0 w-full bg-white dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200 dark:border-gray-800 z-[100] transition-colors duration-300">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
                         {/* Logo */}
                         <div className="flex-shrink-0 flex items-center gap-3 cursor-pointer" onClick={() => navigate('/')}>
                             <img src="/logo.jpg" alt="Logo" className="w-8 h-8 rounded-full shadow-lg" />
-                            <span className="font-bold text-xl tracking-tight">Hitam Ai Admin</span>
+                            <span className="font-bold text-xl tracking-tight text-gray-900 dark:text-white">Hitam Ai Admin</span>
                         </div>
 
                         {/* Nav Links */}
                         <div className="hidden md:flex space-x-8">
                             <button
-                                onClick={() => setActiveTab('home')}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${activeTab === 'home' ? 'text-primary-400 bg-primary-500/10' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => handleTabChange('home')}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${activeTab === 'home' ? 'text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-500/10' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                             >
                                 <Home className="w-4 h-4" /> Home
                             </button>
                             <button
-                                onClick={() => setActiveTab('quizzes')}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${activeTab === 'quizzes' ? 'text-primary-400 bg-primary-500/10' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => handleTabChange('quizzes')}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${activeTab === 'quizzes' ? 'text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-500/10' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                             >
                                 <FileText className="w-4 h-4" /> Quizzes
                             </button>
                             <button
-                                onClick={() => setActiveTab('history')}
-                                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${activeTab === 'history' ? 'text-primary-400 bg-primary-500/10' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => handleTabChange('history')}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${activeTab === 'history' ? 'text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-500/10' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'}`}
                             >
                                 <Clock className="w-4 h-4" /> History
                             </button>
@@ -244,7 +252,14 @@ const Dashboard = () => {
 
                         {/* Actions */}
                         <div className="flex items-center gap-4">
-                            <button onClick={handleLogout} className="text-gray-400 hover:text-red-400 bg-gray-800/50 hover:bg-gray-800 p-2 rounded-lg transition-colors" title="Logout">
+                            <button
+                                onClick={toggleTheme}
+                                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 transition-all hover:scale-105 active:scale-95"
+                                title="Toggle Theme"
+                            >
+                                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                            </button>
+                            <button onClick={handleLogout} className="text-gray-500 dark:text-gray-400 hover:text-red-500 bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-800 p-2 rounded-lg transition-colors" title="Logout">
                                 <LogOut className="w-5 h-5" />
                             </button>
                         </div>
@@ -260,24 +275,24 @@ const Dashboard = () => {
                 {activeTab === 'home' && (
                     <div className="space-y-8 animate-fade-in">
                         {/* About / Basic Info Section */}
-                        <div className="bg-gradient-to-br from-gray-800 to-gray-900 border border-gray-700 rounded-3xl p-8 relative overflow-hidden">
+                        <div className="bg-white dark:bg-gradient-to-br dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 rounded-3xl p-8 relative overflow-hidden shadow-xl dark:shadow-none">
                             <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-                            <h1 className="text-4xl font-bold text-white mb-4 relative z-10">Welcome to Hitam Ai Admin</h1>
-                            <p className="text-gray-400 text-lg max-w-2xl relative z-10">
+                            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 relative z-10">Welcome to Hitam Ai Admin</h1>
+                            <p className="text-gray-600 dark:text-gray-400 text-lg max-w-2xl relative z-10">
                                 This is your command center. From here, you can manage your quizzes, view history, and control live sessions.
                             </p>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 relative z-10">
-                                <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-                                    <div className="text-primary-400 font-bold mb-1">Total Quizzes</div>
-                                    <div className="text-2xl text-white">{quizzes.length}</div>
+                                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                    <div className="text-primary-600 dark:text-primary-400 font-bold mb-1">Total Quizzes</div>
+                                    <div className="text-2xl text-gray-900 dark:text-white">{quizzes.length}</div>
                                 </div>
-                                <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-                                    <div className="text-green-400 font-bold mb-1">Active Sessions</div>
-                                    <div className="text-2xl text-white">{activeSessions.length}</div>
+                                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                    <div className="text-green-600 dark:text-green-400 font-bold mb-1">Active Sessions</div>
+                                    <div className="text-2xl text-gray-900 dark:text-white">{activeSessions.length}</div>
                                 </div>
-                                <div className="bg-gray-800/50 p-4 rounded-xl border border-gray-700/50">
-                                    <div className="text-blue-400 font-bold mb-1">Completed History</div>
-                                    <div className="text-2xl text-white">{sessions.filter(s => s.status === 'finished').length}</div>
+                                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                    <div className="text-blue-600 dark:text-blue-400 font-bold mb-1">Completed History</div>
+                                    <div className="text-2xl text-gray-900 dark:text-white">{sessions.filter(s => s.status === 'finished').length}</div>
                                 </div>
                             </div>
                         </div>
@@ -287,21 +302,21 @@ const Dashboard = () => {
                             <div className="flex items-center gap-3">
                                 <div className="relative flex h-3 w-3">
                                     <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${activeSessions.length > 0 ? 'bg-green-400' : 'bg-gray-600'}`}></span>
-                                    <span className={`relative inline-flex rounded-full h-3 w-3 ${activeSessions.length > 0 ? 'bg-green-500' : 'bg-gray-600'}`}></span>
+                                    <span className={`relative inline-flex rounded-full h-3 w-3 ${activeSessions.length > 0 ? 'bg-green-500' : 'bg-gray-400 dark:bg-gray-600'}`}></span>
                                 </div>
-                                <h2 className="text-xl font-bold text-white">Incomplete / Active Quizzes</h2>
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Incomplete / Active Quizzes</h2>
                             </div>
 
                             {activeSessions.length > 0 ? (
                                 <div className="grid gap-4">
                                     {activeSessions.map(session => (
-                                        <div key={session.id} onClick={() => navigate(`/host/${session.id}`)} className="bg-gradient-to-r from-green-900/20 to-gray-800/40 border border-green-500/30 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center cursor-pointer hover:border-green-500 hover:shadow-lg hover:shadow-green-900/20 transition-all group">
+                                        <div key={session.id} onClick={() => navigate(`/host/${session.id}`)} className="bg-white dark:bg-gradient-to-r dark:from-green-900/20 dark:to-gray-800/40 border border-green-200 dark:border-green-500/30 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-center cursor-pointer hover:border-green-500 hover:shadow-lg hover:shadow-green-900/20 transition-all group shadow-sm dark:shadow-none">
                                             <div className="flex items-center gap-4 mb-4 md:mb-0">
-                                                <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-green-500/20 group-hover:scale-110 transition-transform">
+                                                <div className="w-12 h-12 bg-green-100 dark:bg-green-500 rounded-xl flex items-center justify-center text-green-600 dark:text-white shadow-lg shadow-green-500/20 group-hover:scale-110 transition-transform">
                                                     <Activity className="w-6 h-6" />
                                                 </div>
                                                 <div>
-                                                    <h3 className="text-xl font-bold text-white">{session.title}</h3>
+                                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">{session.title}</h3>
                                                     <div className="flex items-center gap-4 mt-1">
                                                         <div className="text-sm text-green-300 font-mono bg-green-900/30 px-2 py-0.5 rounded">PIN: {session.pin}</div>
                                                         <div className="text-sm text-gray-400">{session.questions?.length || 0} Questions</div>
@@ -315,13 +330,13 @@ const Dashboard = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="p-8 bg-gray-800/30 border border-gray-700/50 rounded-2xl text-center">
-                                    <div className="w-16 h-16 bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <Activity className="w-8 h-8 text-gray-500" />
+                                <div className="p-8 bg-white dark:bg-gray-800/30 border border-gray-200 dark:border-gray-700/50 rounded-2xl text-center shadow-sm dark:shadow-none">
+                                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Activity className="w-8 h-8 text-gray-400 dark:text-gray-500" />
                                     </div>
-                                    <h3 className="text-lg font-bold text-white mb-2">No Active Quizzes</h3>
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No Active Quizzes</h3>
                                     <p className="text-gray-500 mb-6">You don't have any incomplete live sessions running right now.</p>
-                                    <button onClick={() => setActiveTab('quizzes')} className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-2 rounded-xl font-bold transition-colors">
+                                    <button onClick={() => handleTabChange('quizzes')} className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-2 rounded-xl font-bold transition-colors">
                                         Start a New Quiz
                                     </button>
                                 </div>
@@ -335,10 +350,10 @@ const Dashboard = () => {
                     <div className="space-y-12 animate-fade-in">
                         <div className="flex justify-between items-end">
                             <div>
-                                <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
                                     My Quizzes
                                 </h1>
-                                <p className="text-gray-400 mt-2">Manage draft templates and create new games</p>
+                                <p className="text-gray-600 dark:text-gray-400 mt-2">Manage draft templates and create new games</p>
                             </div>
                             <button
                                 onClick={() => navigate('/admin/create')}
@@ -362,22 +377,22 @@ const Dashboard = () => {
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {quizzes.map((quiz) => (
-                                    <div key={quiz.id} className="bg-gray-800/40 backdrop-blur border border-gray-700/50 p-6 rounded-2xl flex flex-col justify-between h-full min-h-[200px] group hover:border-primary-500/50 transition-all">
+                                    <div key={quiz.id} className="bg-white dark:bg-gray-800/40 backdrop-blur border border-gray-200 dark:border-gray-700/50 p-6 rounded-2xl flex flex-col justify-between h-full min-h-[200px] group hover:border-primary-500/50 transition-all shadow-md dark:shadow-none">
                                         <div>
                                             <div className="flex justify-between items-start mb-4">
-                                                <div className="w-12 h-12 bg-gray-700/50 rounded-xl flex items-center justify-center text-primary-400">
+                                                <div className="w-12 h-12 bg-primary-50 dark:bg-gray-700/50 rounded-xl flex items-center justify-center text-primary-600 dark:text-primary-400">
                                                     <FileText className="w-6 h-6" />
                                                 </div>
-                                                <button onClick={(e) => handleDelete(quiz.id, e)} className="p-2 hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-500 transition-colors">
+                                                <button onClick={(e) => handleDelete(quiz.id, e)} className="p-2 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg text-gray-400 hover:text-red-500 transition-colors">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
                                             </div>
-                                            <h3 className="text-xl font-bold text-white group-hover:text-primary-400 transition-colors line-clamp-2 mb-2">{quiz.title}</h3>
+                                            <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors line-clamp-2 mb-2">{quiz.title}</h3>
                                             <div className="text-sm text-gray-500">{quiz.questions?.length || 0} Slides</div>
                                         </div>
-                                        <div className="pt-4 mt-4 border-t border-gray-700/50 flex gap-2">
+                                        <div className="pt-4 mt-4 border-t border-gray-100 dark:border-gray-700/50 flex gap-2">
                                             <button onClick={(e) => handleHost(quiz, e)} className="flex-1 bg-primary-600/90 hover:bg-primary-500 text-white py-2 rounded-lg text-sm font-bold transition-all shadow-lg shadow-primary-500/10">Host Live</button>
-                                            <button onClick={() => navigate(`/admin/edit/${quiz.id}`)} className="p-2 px-4 bg-gray-700/30 hover:bg-gray-700/50 text-gray-300 hover:text-white rounded-lg transition-all text-sm font-bold flex items-center gap-2">
+                                            <button onClick={() => navigate(`/admin/edit/${quiz.id}`)} className="p-2 px-4 bg-gray-100 dark:bg-gray-700/30 hover:bg-gray-200 dark:hover:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white rounded-lg transition-all text-sm font-bold flex items-center gap-2">
                                                 <Edit className="w-4 h-4" /> Edit
                                             </button>
                                         </div>
@@ -392,10 +407,10 @@ const Dashboard = () => {
                 {activeTab === 'history' && (
                     <div className="space-y-12 animate-fade-in">
                         <div>
-                            <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
+                            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 bg-clip-text text-transparent">
                                 Session History
                             </h1>
-                            <p className="text-gray-400 mt-2">View all active and past quiz sessions</p>
+                            <p className="text-gray-600 dark:text-gray-400 mt-2">View all active and past quiz sessions</p>
                         </div>
 
                         {loadingSessions ? (
@@ -407,13 +422,13 @@ const Dashboard = () => {
                         ) : (
                             <div className="grid gap-4">
                                 {sessions.map((session) => (
-                                    <div key={session.id} className="bg-gray-800/40 backdrop-blur border border-gray-700/50 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-gray-800/60 transition-colors">
+                                    <div key={session.id} className="bg-white dark:bg-gray-800/40 backdrop-blur border border-gray-200 dark:border-gray-700/50 p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/60 transition-colors shadow-md dark:shadow-none">
                                         <div className="flex items-center gap-6">
-                                            <div className="w-12 h-12 bg-gray-700/30 rounded-xl flex items-center justify-center text-gray-400 font-bold text-xl">
+                                            <div className="w-12 h-12 bg-gray-100 dark:bg-gray-700/30 rounded-xl flex items-center justify-center text-gray-500 dark:text-gray-400 font-bold text-xl">
                                                 {session.title?.[0]}
                                             </div>
                                             <div>
-                                                <h3 className="text-xl font-bold text-white">{session.title}</h3>
+                                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{session.title}</h3>
                                                 <div className="text-sm text-gray-400 flex gap-4 mt-1">
                                                     <span className="font-mono bg-gray-700/50 px-2 rounded text-xs py-0.5">PIN: {session.pin}</span>
                                                     <span>{session.createdAt?.toDate().toLocaleDateString()}</span>
@@ -421,7 +436,7 @@ const Dashboard = () => {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-4 justify-between md:justify-end w-full md:w-auto">
-                                            <div className={`text-sm font-bold px-3 py-1 rounded-full ${session.status === 'finished' ? 'bg-gray-700 text-gray-400' : 'bg-green-500/20 text-green-400 animate-pulse'}`}>
+                                            <div className={`text-sm font-bold px-3 py-1 rounded-full ${session.status === 'finished' ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400' : 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400 animate-pulse'}`}>
                                                 {session.status === 'finished' ? 'Completed' : 'Live'}
                                             </div>
                                             {session.status !== 'finished' && (
@@ -453,23 +468,23 @@ const Dashboard = () => {
 
             </div>
             {/* Mobile Bottom Navigation */}
-            <div className="md:hidden fixed bottom-0 inset-x-0 bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 p-4 pb-8 z-50 flex justify-around">
+            <div className="md:hidden fixed bottom-0 inset-x-0 bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 p-4 pb-8 z-[100] flex justify-around">
                 <button
-                    onClick={() => setActiveTab('home')}
+                    onClick={() => handleTabChange('home')}
                     className={`flex flex-col items-center gap-1 ${activeTab === 'home' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                     <Home className="w-5 h-5" />
                     <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
                 </button>
                 <button
-                    onClick={() => setActiveTab('quizzes')}
+                    onClick={() => handleTabChange('quizzes')}
                     className={`flex flex-col items-center gap-1 ${activeTab === 'quizzes' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                     <FileText className="w-5 h-5" />
                     <span className="text-[10px] font-bold uppercase tracking-wider">Quizzes</span>
                 </button>
                 <button
-                    onClick={() => setActiveTab('history')}
+                    onClick={() => handleTabChange('history')}
                     className={`flex flex-col items-center gap-1 ${activeTab === 'history' ? 'text-primary-400' : 'text-gray-500 hover:text-gray-300'}`}
                 >
                     <Clock className="w-5 h-5" />

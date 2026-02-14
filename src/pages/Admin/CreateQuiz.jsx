@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, Trash2, Play, Save, CheckCircle2, X, Clock, ArrowLeft, Settings, Type, Hash, Mail, Upload, Menu } from 'lucide-react';
+import { Plus, Trash2, Play, Save, CheckCircle2, X, Clock, ArrowLeft, Settings, Type, Hash, Mail, Upload, Menu, MessageSquare, Cloud, Trophy, Sun, Moon } from 'lucide-react';
 import { collection, addDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getAuth } from "firebase/auth";
+import { useTheme } from '../../context/ThemeContext';
 
 const CreateQuiz = () => {
     const { quizId } = useParams();
     const navigate = useNavigate();
     const auth = getAuth();
+    const { theme, toggleTheme } = useTheme();
 
     const [title, setTitle] = useState("New Interactive Quiz");
     const [questions, setQuestions] = useState([
         {
             text: "What is the capital of France?",
             timeLimit: 30,
-            type: "single",
+            type: "single", // single, multiple, word_cloud, open_ended
             options: [
                 { text: "Paris", isCorrect: true },
                 { text: "London", isCorrect: false }
@@ -34,6 +36,9 @@ const CreateQuiz = () => {
 
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+
+    // Theme State
+    // Theme State handled globally
 
     useEffect(() => {
         const fetchQuiz = async () => {
@@ -66,6 +71,7 @@ const CreateQuiz = () => {
             text: "",
             timeLimit: 30,
             type: "single",
+            points: 1,
             options: [{ text: "", isCorrect: false }, { text: "", isCorrect: false }]
         }]);
     };
@@ -241,347 +247,401 @@ const CreateQuiz = () => {
         }
     };
 
-    return (
-        <div className="min-h-screen p-4 pt-4 lg:p-8 lg:pt-24 pb-24 max-w-7xl mx-auto flex gap-8 relative">
+    // Question Type config
+    const questionTypes = [
+        { id: 'single', label: 'Single Choice', icon: <CheckCircle2 className="w-4 h-4" />, color: 'blue' },
+        { id: 'multiple', label: 'Multi Select', icon: <CheckCircle2 className="w-4 h-4" />, color: 'purple' },
+        { id: 'word_cloud', label: 'Word Cloud', icon: <Cloud className="w-4 h-4" />, color: 'pink' },
+        { id: 'open_ended', label: 'Open Ended', icon: <MessageSquare className="w-4 h-4" />, color: 'orange' }
+    ];
 
-            {/* Sidebar / Config - Hidden on Mobile, Visible on LG, OR Visible if Mobile Drawer Open */}
-            <div className={`
-                fixed inset-y-0 left-0 z-[60] w-72 bg-slate-900 border-r border-gray-800 p-6 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:bg-transparent lg:border-none lg:p-0 lg:block lg:w-72 lg:overflow-visible
+    return (
+        <div className={theme === 'dark' ? "dark" : ""}>
+            <div className="min-h-screen p-4 pt-4 lg:p-8 lg:pt-24 pb-24 max-w-7xl mx-auto flex gap-8 relative bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white transition-colors duration-300">
+
+                {/* Sidebar / Config - Hidden on Mobile, Visible on LG, OR Visible if Mobile Drawer Open */}
+                <div className={`
+                fixed inset-y-0 left-0 z-[60] w-72 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-gray-800 p-6 transform transition-transform duration-300 lg:translate-x-0 lg:static lg:bg-transparent lg:border-none lg:p-0 lg:block lg:w-72 lg:overflow-visible
                 ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} shadow-2xl lg:shadow-none
             `}>
-                {/* Mobile Close Button */}
-                <button onClick={() => setIsMobileSidebarOpen(false)} className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white p-2">
-                    <X className="w-6 h-6" />
-                </button>
-
-                <div className="h-full overflow-y-auto pr-2 scrollbar-hide">
-                    <button onClick={() => navigate('/admin')} className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors font-bold">
-                        <ArrowLeft className="w-5 h-5" /> Back to Dashboard
+                    {/* Mobile Close Button */}
+                    <button onClick={() => setIsMobileSidebarOpen(false)} className="lg:hidden absolute top-4 right-4 text-gray-400 hover:text-white p-2">
+                        <X className="w-6 h-6" />
                     </button>
 
-                    {/* Participant Info Config */}
-                    <div className="bg-gray-800/60 backdrop-blur border border-gray-700 p-4 rounded-xl shadow-lg">
-                        <div className="flex items-center gap-2 text-gray-400 text-xs font-bold uppercase tracking-wider mb-4">
-                            <Settings className="w-3 h-3" />
-                            Player Info Form
-                        </div>
-
-                        <div className="space-y-3 mb-4">
-                            {participantFields.map((field, i) => (
-                                <div key={i} className="flex justify-between items-center bg-gray-900/50 p-3 rounded-lg border border-gray-700/50 group hover:border-gray-600 transition-all">
-                                    <div className="flex items-center gap-3 overflow-hidden">
-                                        <div className="text-gray-500 bg-gray-800 p-1.5 rounded">
-                                            {getIconForType(field.type)}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-sm text-gray-200 font-medium truncate">{field.label}</span>
-                                            <span className="text-[10px] text-gray-500 uppercase">{field.type}</span>
-                                        </div>
-                                    </div>
-                                    {field.id !== 'name' && (
-                                        <button onClick={() => setParticipantFields(participantFields.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="bg-gray-900/30 p-3 rounded-lg border border-gray-700/30 space-y-3">
-                            <div className="text-[10px] text-gray-500 uppercase font-bold">Add New Field</div>
-                            <input
-                                type="text"
-                                value={newFieldLabel}
-                                onChange={(e) => setNewFieldLabel(e.target.value)}
-                                placeholder="Label (e.g. Roll No)"
-                                className="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm text-white outline-none focus:border-primary-500 transition-colors"
-                            />
-                            <div className="flex gap-2">
-                                <select
-                                    value={newFieldType}
-                                    onChange={(e) => setNewFieldType(e.target.value)}
-                                    className="bg-gray-900 border border-gray-700 rounded px-2 py-2 text-xs text-white outline-none focus:border-primary-500 flex-1"
-                                >
-                                    <option value="text">Text</option>
-                                    <option value="number">Number</option>
-                                    <option value="email">Email</option>
-                                </select>
-                                <button
-                                    onClick={handleAddField}
-                                    disabled={!newFieldLabel.trim()}
-                                    className="bg-gray-700 hover:bg-gray-600 disabled:opacity-50 text-white px-3 py-2 rounded text-xs font-bold transition-colors"
-                                >
-                                    Add
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-800">
-                        <div className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-4">Slides ({questions.length})</div>
-                        <div className="space-y-3">
-                            {questions.map((q, i) => (
-                                <div key={i} className="bg-gray-800/40 backdrop-blur border border-gray-700 p-4 rounded-xl cursor-pointer hover:border-primary-500 transition-all group relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-1 h-full bg-gray-700 group-hover:bg-primary-500 transition-colors"></div>
-                                    <div className="flex justify-between items-center mb-2 pl-3">
-                                        <span className="text-xs font-bold text-gray-500">SLIDE {i + 1}</span>
-                                        <button onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (window.confirm("Delete this slide?")) {
-                                                const newQs = questions.filter((_, idx) => idx !== i);
-                                                setQuestions(newQs);
-                                            }
-                                        }} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded text-red-500 transition-all">
-                                            <Trash2 className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                    <div className="text-xs text-gray-300 truncate pl-3 font-medium">{q.text || "New Question"}</div>
-                                </div>
-                            ))}
-                        </div>
-                        <button onClick={addQuestion} className="w-full mt-4 py-3 border-2 border-dashed border-gray-700 rounded-xl text-gray-500 hover:border-primary-500 hover:text-primary-400 transition-all flex items-center justify-center gap-2 text-sm font-bold group">
-                            <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" /> Add Slide
+                    <div className="h-full overflow-y-auto pr-2 scrollbar-hide">
+                        <button onClick={() => navigate('/admin')} className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white mb-6 transition-colors font-bold">
+                            <ArrowLeft className="w-5 h-5" /> Back to Dashboard
                         </button>
-                        {/* Spacer for bottom mobile nav if needed */}
-                        <div className="h-20 lg:hidden"></div>
-                    </div>
-                </div>
-            </div>
 
-
-            {/* Mobile Sidebar Overlay */}
-            {isMobileSidebarOpen && (
-                <div
-                    className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-                    onClick={() => setIsMobileSidebarOpen(false)}
-                />
-            )}
-
-            {/* Main Editor Area */}
-            <div className="flex-1 min-w-0 space-y-8">
-
-                {/* Header Actions */}
-                <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-900 md:bg-gray-900/80 backdrop-blur-xl p-4 lg:p-6 rounded-2xl border border-gray-800 sticky top-4 lg:top-24 z-50 shadow-2xl">
-
-                    {/* Mobile Menu Button */}
-                    <div className="flex items-center gap-4 w-full md:w-auto">
-                        <div className="flex items-center gap-2 lg:hidden">
-                            <button
-                                onClick={() => navigate('/admin')}
-                                className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-                            >
-                                <ArrowLeft className="w-6 h-6" />
-                            </button>
-                            <button
-                                onClick={() => setIsMobileSidebarOpen(true)}
-                                className="p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-                            >
-                                <Menu className="w-6 h-6" />
-                            </button>
-                        </div>
-
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="bg-transparent text-xl md:text-3xl font-bold outline-none text-white placeholder-gray-600 w-full"
-                            placeholder="Enter Presentation Name..."
-                        />
-                    </div>
-                    <div className="flex gap-3 flex-shrink-0">
-                        <button
-                            onClick={handleSaveQuiz}
-                            disabled={saving}
-                            className="px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-gray-300 transition-all flex items-center gap-2 font-bold border border-gray-700"
-                        >
-                            {saving ? "Saving..." : <><Save className="w-4 h-4" /> Save</>}
-                        </button>
-                        <button
-                            onClick={handleStartHosting}
-                            disabled={loading}
-                            className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary-500/20 flex items-center gap-2 transition-transform hover:scale-105"
-                        >
-                            {loading ? "Starting..." : <><Play className="w-5 h-5 fill-current" /> Present</>}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Questions Scroll */}
-                <div className="space-y-12 pb-20">
-                    {questions.map((q, qIndex) => (
-                        <div key={qIndex} className="bg-gray-800/30 backdrop-blur rounded-3xl border border-gray-700/50 p-8 shadow-xl relative group hover:border-gray-600 transition-colors">
-
-                            <div className="absolute -left-4 -top-4 bg-gray-900 border border-gray-700 rounded-full w-10 h-10 flex items-center justify-center font-bold text-gray-400 shadow-lg z-10 text-sm">
-                                {qIndex + 1}
+                        {/* Participant Info Config */}
+                        <div className="bg-white dark:bg-gray-800/60 backdrop-blur border border-gray-200 dark:border-gray-700 p-4 rounded-xl shadow-lg">
+                            <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider mb-4">
+                                <Settings className="w-3 h-3" />
+                                Player Info Form
                             </div>
 
-                            <div className="space-y-8">
+                            <div className="space-y-3 mb-4">
+                                {participantFields.map((field, i) => (
+                                    <div key={i} className="flex justify-between items-center bg-gray-50 dark:bg-gray-900/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700/50 group hover:border-gray-400 dark:hover:border-gray-600 transition-all">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <div className="text-gray-500 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1.5 rounded">
+                                                {getIconForType(field.type)}
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <span className="text-sm text-gray-700 dark:text-gray-200 font-medium truncate">{field.label}</span>
+                                                <span className="text-[10px] text-gray-500 uppercase">{field.type}</span>
+                                            </div>
+                                        </div>
+                                        {field.id !== 'name' && (
+                                            <button onClick={() => setParticipantFields(participantFields.filter((_, idx) => idx !== i))} className="text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="bg-gray-50 dark:bg-gray-900/30 p-3 rounded-lg border border-gray-200 dark:border-gray-700/30 space-y-3">
+                                <div className="text-[10px] text-gray-500 uppercase font-bold">Add New Field</div>
                                 <input
                                     type="text"
-                                    value={q.text}
-                                    onChange={(e) => updateQuestion(qIndex, 'text', e.target.value)}
-                                    placeholder="Type your question here..."
-                                    className="w-full bg-transparent text-3xl md:text-4xl font-bold text-center outline-none border-b-2 border-gray-700 focus:border-primary-500 pb-4 transition-colors placeholder-gray-600"
+                                    value={newFieldLabel}
+                                    onChange={(e) => setNewFieldLabel(e.target.value)}
+                                    placeholder="Label (e.g. Roll No)"
+                                    className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-3 py-2 text-sm text-gray-900 dark:text-white outline-none focus:border-primary-500 transition-colors"
                                 />
-
-                                {/* Question Images Upload */}
-                                <div className="flex flex-col items-center gap-4">
-                                    <div className="flex flex-wrap gap-4 justify-center">
-                                        {/* Display Existing Images (from array or legacy single) */}
-                                        {(q.images || (q.imageUrl ? [q.imageUrl] : [])).map((imgUrl, imgIdx) => (
-                                            <div key={imgIdx} className="relative group">
-                                                <img src={imgUrl} alt={`Slide ${imgIdx}`} className="h-48 rounded-xl border border-gray-700 object-cover shadow-lg" />
-                                                <button
-                                                    onClick={() => {
-                                                        const currentImages = q.images || (q.imageUrl ? [q.imageUrl] : []);
-                                                        const newImages = currentImages.filter((_, i) => i !== imgIdx);
-                                                        updateQuestion(qIndex, 'images', newImages);
-                                                        updateQuestion(qIndex, 'imageUrl', null); // clear legacy
-                                                    }}
-                                                    className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                                                >
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-
-                                        {/* Upload Button */}
-                                        <div className="h-48 w-48 border-2 border-dashed border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-blue-500 hover:text-blue-400 transition-all cursor-pointer relative bg-gray-900/50">
-                                            <Upload className="w-8 h-8" />
-                                            <span className="text-xs font-bold">
-                                                {q.uploading ? "Uploading..." : "Add Image"}
-                                            </span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                                onChange={(e) => handleImageUpload(e, qIndex)}
-                                                disabled={q.uploading}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="text-xs text-slate-500 font-medium">
-                                        Tip: You can upload multiple images for a carousel view.
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {q.options.map((opt, oIndex) => (
-                                        <div key={oIndex} className={`relative p-1 rounded-2xl transition-all ${opt.isCorrect ? 'bg-gradient-to-r from-green-500 to-green-600 p-[2px]' : 'bg-gray-700/30'}`}>
-                                            <div className="bg-gray-900 rounded-2xl p-4 flex items-center gap-3 relative h-full">
-                                                <button
-                                                    onClick={() => updateOption(qIndex, oIndex, 'isCorrect', !opt.isCorrect)}
-                                                    className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${opt.isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-600 hover:border-gray-400 text-transparent'}`}
-                                                >
-                                                    <CheckCircle2 className="w-5 h-5" />
-                                                </button>
-
-                                                {/* Option Images Preview */}
-                                                {(opt.images || (opt.imageUrl ? [opt.imageUrl] : [])).map((img, idx) => (
-                                                    <div key={idx} className="relative group w-12 h-12 flex-shrink-0">
-                                                        <img src={img} alt="Opt" className="w-full h-full object-cover rounded-lg border border-gray-700" />
-                                                        <button
-                                                            onClick={() => {
-                                                                const currentImages = opt.images || (opt.imageUrl ? [opt.imageUrl] : []);
-                                                                const newImages = currentImages.filter((_, i) => i !== idx);
-                                                                updateOption(qIndex, oIndex, 'images', newImages);
-                                                                updateOption(qIndex, oIndex, 'imageUrl', null);
-                                                            }}
-                                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                                                        >
-                                                            <X className="w-2 h-2" />
-                                                        </button>
-                                                    </div>
-                                                ))}
-
-                                                <input
-                                                    type="text"
-                                                    value={opt.text}
-                                                    onChange={(e) => updateOption(qIndex, oIndex, 'text', e.target.value)}
-                                                    placeholder={`Option ${oIndex + 1}`}
-                                                    className="flex-1 bg-transparent outline-none font-medium text-lg min-w-0"
-                                                />
-
-                                                {/* Option Image Upload Trigger */}
-                                                <label className="p-2 text-gray-500 hover:text-blue-400 cursor-pointer transition-colors relative">
-                                                    <Upload className="w-4 h-4" />
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="hidden"
-                                                        onChange={(e) => handleImageUpload(e, qIndex, true, oIndex)}
-                                                    />
-                                                </label>
-
-                                                {q.options.length > 2 && (
-                                                    <button onClick={() => {
-                                                        const newQs = [...questions];
-                                                        newQs[qIndex].options = newQs[qIndex].options.filter((_, idx) => idx !== oIndex);
-                                                        setQuestions(newQs);
-                                                    }} className="text-gray-600 hover:text-red-500 transition-colors">
-                                                        <X className="w-5 h-5" />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-
-                                    {q.options.length < 4 && (
-                                        <button onClick={() => addOption(qIndex)} className="border-2 border-dashed border-gray-700 hover:border-gray-500 rounded-2xl p-4 flex items-center justify-center gap-2 text-gray-500 font-bold hover:bg-gray-800/50 transition-all h-full min-h-[80px]">
-                                            <Plus className="w-5 h-5" /> Add Option
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="border-t border-gray-700/50 pt-6 flex justify-between items-center">
-                                    <div className="flex items-center gap-3 text-sm font-medium text-gray-400 bg-gray-800/50 px-4 py-2 rounded-lg border border-gray-700/50">
-                                        <Clock className="w-4 h-4" />
-                                        <span>Time Limit:</span>
-                                        <select
-                                            value={q.timeLimit}
-                                            onChange={(e) => updateQuestion(qIndex, 'timeLimit', parseInt(e.target.value))}
-                                            className="bg-transparent outline-none text-white font-bold cursor-pointer"
-                                        >
-                                            <option value={15}>15s</option>
-                                            <option value={30}>30s</option>
-                                            <option value={45}>45s</option>
-                                            <option value={60}>60s</option>
-                                        </select>
-                                    </div>
-
-                                    <div className="flex items-center gap-3 text-sm font-medium text-gray-400 bg-gray-800/50 px-4 py-2 rounded-lg border border-gray-700/50">
-                                        <span className="uppercase text-xs font-bold tracking-wider">Type:</span>
-                                        <div className="flex bg-gray-900 rounded-lg p-1">
-                                            <button
-                                                onClick={() => {
-                                                    // When switching to single, ensure only one is correct (keep first correct one, or none)
-                                                    updateQuestion(qIndex, 'type', 'single');
-                                                    const firstCorrect = q.options.findIndex(o => o.isCorrect);
-                                                    if (firstCorrect !== -1) {
-                                                        const newOptions = q.options.map((o, idx) => ({ ...o, isCorrect: idx === firstCorrect }));
-                                                        updateQuestion(qIndex, 'options', newOptions);
-                                                    }
-                                                }}
-                                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${(!q.type || q.type === 'single') ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                                            >
-                                                Single Answer
-                                            </button>
-                                            <button
-                                                onClick={() => updateQuestion(qIndex, 'type', 'multiple')}
-                                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${q.type === 'multiple' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}
-                                            >
-                                                Multiple Choice
-                                            </button>
-                                        </div>
-                                    </div>
+                                <div className="flex gap-2">
+                                    <select
+                                        value={newFieldType}
+                                        onChange={(e) => setNewFieldType(e.target.value)}
+                                        className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded px-2 py-2 text-xs text-gray-900 dark:text-white outline-none focus:border-primary-500 flex-1"
+                                    >
+                                        <option value="text">Text</option>
+                                        <option value="number">Number</option>
+                                        <option value="email">Email</option>
+                                    </select>
+                                    <button
+                                        onClick={handleAddField}
+                                        disabled={!newFieldLabel.trim()}
+                                        className="bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50 text-gray-900 dark:text-white px-3 py-2 rounded text-xs font-bold transition-colors"
+                                    >
+                                        Add
+                                    </button>
                                 </div>
                             </div>
                         </div>
-                    ))}
+
+                        <div className="pt-4 border-t border-gray-800">
+                            <div className="text-gray-400 text-sm font-bold uppercase tracking-wider mb-4">Slides ({questions.length})</div>
+                            <div className="space-y-3">
+                                {questions.map((q, i) => (
+                                    <div key={i} className="bg-white dark:bg-gray-800/40 backdrop-blur border border-gray-200 dark:border-gray-700 p-4 rounded-xl cursor-pointer hover:border-primary-500 transition-all group relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-1 h-full bg-gray-700 group-hover:bg-primary-500 transition-colors"></div>
+                                        <div className="flex justify-between items-center mb-2 pl-3">
+                                            <span className="text-xs font-bold text-gray-500">SLIDE {i + 1}</span>
+                                            <button onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (window.confirm("Delete this slide?")) {
+                                                    const newQs = questions.filter((_, idx) => idx !== i);
+                                                    setQuestions(newQs);
+                                                }
+                                            }} className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 rounded text-red-500 transition-all">
+                                                <Trash2 className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                        <div className="text-xs text-gray-300 truncate pl-3 font-medium mb-1">{q.text || "New Question"}</div>
+                                        <div className="pl-3 flex gap-2">
+                                            <span className="text-[10px] uppercase font-bold bg-gray-900 px-2 py-0.5 rounded text-gray-500">{q.type || 'single'}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            <button onClick={addQuestion} className="w-full mt-4 py-3 border-2 border-dashed border-gray-700 rounded-xl text-gray-500 hover:border-primary-500 hover:text-primary-400 transition-all flex items-center justify-center gap-2 text-sm font-bold group">
+                                <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" /> Add Slide
+                            </button>
+                            {/* Spacer for bottom mobile nav if needed */}
+                            <div className="h-20 lg:hidden"></div>
+                        </div>
+                    </div>
+                </div>
+
+
+                {/* Mobile Sidebar Overlay */}
+                {isMobileSidebarOpen && (
+                    <div
+                        className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+                        onClick={() => setIsMobileSidebarOpen(false)}
+                    />
+                )}
+
+                {/* Main Editor Area */}
+                <div className="flex-1 min-w-0 space-y-8">
+
+                    {/* Header Actions */}
+                    <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white dark:bg-gray-900 md:bg-white/80 dark:md:bg-gray-900/80 backdrop-blur-xl p-4 lg:p-6 rounded-2xl border border-gray-200 dark:border-gray-800 sticky top-4 lg:top-24 z-50 shadow-2xl transition-colors">
+
+                        {/* Mobile Menu Button */}
+                        <div className="flex items-center gap-4 w-full md:w-auto">
+                            <div className="flex items-center gap-2 lg:hidden">
+                                <button
+                                    onClick={() => navigate('/admin')}
+                                    className="p-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                                >
+                                    <ArrowLeft className="w-6 h-6" />
+                                </button>
+                                <button
+                                    onClick={() => setIsMobileSidebarOpen(true)}
+                                    className="p-2 text-gray-300 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+                                >
+                                    <Menu className="w-6 h-6" />
+                                </button>
+                            </div>
+
+                            <input
+                                type="text"
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                className="bg-transparent text-xl md:text-3xl font-bold outline-none text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600 w-full"
+                                placeholder="Enter Presentation Name..."
+                            />
+                        </div>
+                        <div className="flex gap-3 flex-shrink-0 items-center">
+                            <button
+                                onClick={toggleTheme}
+                                className="p-3 rounded-xl bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                            </button>
+                            <button
+                                onClick={handleSaveQuiz}
+                                disabled={saving}
+                                className="px-5 py-3 bg-gray-800 hover:bg-gray-700 rounded-xl text-gray-300 transition-all flex items-center gap-2 font-bold border border-gray-700"
+                            >
+                                {saving ? "Saving..." : <><Save className="w-4 h-4" /> Save</>}
+                            </button>
+                            <button
+                                onClick={handleStartHosting}
+                                disabled={loading}
+                                className="bg-primary-600 hover:bg-primary-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-primary-500/20 flex items-center gap-2 transition-transform hover:scale-105"
+                            >
+                                {loading ? "Starting..." : <><Play className="w-5 h-5 fill-current" /> Present</>}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Questions Scroll */}
+                    <div className="space-y-12 pb-20">
+                        {questions.map((q, qIndex) => (
+                            <div key={qIndex} className="bg-white dark:bg-gray-800/30 backdrop-blur rounded-3xl border border-gray-200 dark:border-gray-700/50 p-8 shadow-xl relative group hover:border-gray-400 dark:hover:border-gray-600 transition-colors">
+
+                                <div className="absolute -left-4 -top-4 bg-gray-900 border border-gray-700 rounded-full w-10 h-10 flex items-center justify-center font-bold text-gray-400 shadow-lg z-10 text-sm">
+                                    {qIndex + 1}
+                                </div>
+
+                                <div className="space-y-8">
+                                    <textarea
+                                        value={q.text}
+                                        onChange={(e) => {
+                                            updateQuestion(qIndex, 'text', e.target.value);
+                                            e.target.style.height = 'auto'; // Reset height
+                                            e.target.style.height = `${e.target.scrollHeight}px`; // Set to scroll height
+                                        }}
+                                        placeholder="Type your question here...\n(You can use multiple lines!)"
+                                        className="w-full bg-transparent text-3xl md:text-4xl font-bold text-center outline-none border-b-2 border-gray-200 dark:border-gray-700 focus:border-primary-500 pb-4 transition-colors placeholder-gray-400 dark:placeholder-gray-600 text-gray-900 dark:text-white resize-none overflow-hidden"
+                                        rows={1}
+                                        onInput={(e) => {
+                                            e.target.style.height = 'auto';
+                                            e.target.style.height = `${e.target.scrollHeight}px`;
+                                        }}
+                                    />
+
+                                    {/* Question Images Upload */}
+                                    <div className="flex flex-col items-center gap-4">
+                                        <div className="flex flex-wrap gap-4 justify-center">
+                                            {/* Display Existing Images */}
+                                            {(q.images || (q.imageUrl ? [q.imageUrl] : [])).map((imgUrl, imgIdx) => (
+                                                <div key={imgIdx} className="relative group">
+                                                    <img src={imgUrl} alt={`Slide ${imgIdx}`} className="h-48 rounded-xl border border-gray-700 object-cover shadow-lg" />
+                                                    <button
+                                                        onClick={() => {
+                                                            const currentImages = q.images || (q.imageUrl ? [q.imageUrl] : []);
+                                                            const newImages = currentImages.filter((_, i) => i !== imgIdx);
+                                                            updateQuestion(qIndex, 'images', newImages);
+                                                            updateQuestion(qIndex, 'imageUrl', null); // clear legacy
+                                                        }}
+                                                        className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            ))}
+
+                                            {/* Upload Button */}
+                                            <div className="h-48 w-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2 text-gray-500 hover:border-blue-500 hover:text-blue-400 transition-all cursor-pointer relative bg-gray-50 dark:bg-gray-900/50">
+                                                <Upload className="w-8 h-8" />
+                                                <span className="text-xs font-bold">
+                                                    {q.uploading ? "Uploading..." : "Add Image"}
+                                                </span>
+                                                <input
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                                    onChange={(e) => handleImageUpload(e, qIndex)}
+                                                    disabled={q.uploading}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Question Settings Row */}
+                                    <div className="flex flex-wrap gap-4 justify-center items-center py-4 border-t border-gray-200 dark:border-gray-700/30 border-b border-gray-200 dark:border-gray-700/30">
+
+                                        {/* Type Selector */}
+                                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-900 p-1.5 rounded-xl border border-gray-200 dark:border-gray-700">
+                                            {questionTypes.map((type) => (
+                                                <button
+                                                    key={type.id}
+                                                    onClick={() => {
+                                                        updateQuestion(qIndex, 'type', type.id);
+                                                        if (type.id === 'word_cloud' || type.id === 'open_ended') {
+                                                            updateQuestion(qIndex, 'points', 0);
+                                                        }
+                                                    }}
+                                                    className={`
+                                                    px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all
+                                                    ${q.type === type.id
+                                                            ? `bg-${type.color}-600 text-white shadow-lg`
+                                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-gray-800'
+                                                        }
+                                                `}
+                                                    title={type.label}
+                                                >
+                                                    {type.icon}
+                                                    <span className="hidden md:inline">{type.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Time Limit */}
+                                        <div className="flex items-center gap-3 text-sm font-medium text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/50 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700/50">
+                                            <Clock className="w-4 h-4" />
+                                            <select
+                                                value={q.timeLimit}
+                                                onChange={(e) => updateQuestion(qIndex, 'timeLimit', parseInt(e.target.value))}
+                                                className="bg-transparent outline-none text-gray-900 dark:text-white font-bold cursor-pointer"
+                                            >
+                                                <option value={15}>15s</option>
+                                                <option value={30}>30s</option>
+                                                <option value={60}>60s</option>
+                                                <option value={90}>90s</option>
+                                                <option value={120}>2 mins</option>
+                                                <option value={0}>No Limit (∞)</option>
+                                            </select>
+                                        </div>
+
+                                        {/* Points Selector - Only for Scored Questions */}
+                                        {/* Points Selector Removed - Scoring is strictly +1 for Correct */}
+
+                                    </div>
+
+                                    {/* Options Editor - Only valid for single/multiple types */}
+                                    {(q.type === 'single' || q.type === 'multiple' || !q.type) ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {q.options.map((opt, oIndex) => (
+                                                <div key={oIndex} className={`relative p-1 rounded-2xl transition-all ${opt.isCorrect ? 'bg-gradient-to-r from-green-500 to-green-600 p-[2px]' : 'bg-gray-100 dark:bg-gray-700/30'}`}>
+                                                    <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 flex items-center gap-3 relative h-full border border-gray-200 dark:border-transparent">
+                                                        <button
+                                                            onClick={() => updateOption(qIndex, oIndex, 'isCorrect', !opt.isCorrect)}
+                                                            className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${opt.isCorrect ? 'bg-green-500 border-green-500 text-white' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 text-transparent'}`}
+                                                        >
+                                                            <CheckCircle2 className="w-5 h-5" />
+                                                        </button>
+
+                                                        {/* Option Images Preview */}
+                                                        {(opt.images || (opt.imageUrl ? [opt.imageUrl] : [])).map((img, idx) => (
+                                                            <div key={idx} className="relative group w-12 h-12 flex-shrink-0">
+                                                                <img src={img} alt="Opt" className="w-full h-full object-cover rounded-lg border border-gray-700" />
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const currentImages = opt.images || (opt.imageUrl ? [opt.imageUrl] : []);
+                                                                        const newImages = currentImages.filter((_, i) => i !== idx);
+                                                                        updateOption(qIndex, oIndex, 'images', newImages);
+                                                                        updateOption(qIndex, oIndex, 'imageUrl', null);
+                                                                    }}
+                                                                    className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                                >
+                                                                    <X className="w-2 h-2" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+
+                                                        <input
+                                                            type="text"
+                                                            value={opt.text}
+                                                            onChange={(e) => updateOption(qIndex, oIndex, 'text', e.target.value)}
+                                                            placeholder={`Option ${oIndex + 1}`}
+                                                            className="flex-1 bg-transparent outline-none font-medium text-lg min-w-0 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-600"
+                                                        />
+
+                                                        {/* Option Image Upload Trigger */}
+                                                        <label className="p-2 text-gray-500 hover:text-blue-400 cursor-pointer transition-colors relative">
+                                                            <Upload className="w-4 h-4" />
+                                                            <input
+                                                                type="file"
+                                                                accept="image/*"
+                                                                className="hidden"
+                                                                onChange={(e) => handleImageUpload(e, qIndex, true, oIndex)}
+                                                            />
+                                                        </label>
+
+                                                        {q.options.length > 2 && (
+                                                            <button onClick={() => {
+                                                                const newQs = [...questions];
+                                                                newQs[qIndex].options = newQs[qIndex].options.filter((_, idx) => idx !== oIndex);
+                                                                setQuestions(newQs);
+                                                            }} className="text-gray-600 hover:text-red-500 transition-colors">
+                                                                <X className="w-5 h-5" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            {q.options.length < 4 && (
+                                                <button onClick={() => addOption(qIndex)} className="border-2 border-dashed border-gray-700 hover:border-gray-500 rounded-2xl p-4 flex items-center justify-center gap-2 text-gray-500 font-bold hover:bg-gray-800/50 transition-all h-full min-h-[80px]">
+                                                    <Plus className="w-5 h-5" /> Add Option
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        /* Placeholder for Non-Option Types */
+                                        <div className="bg-gray-800/50 border border-gray-700/50 rounded-2xl p-12 text-center">
+                                            {q.type === 'word_cloud' && (
+                                                <div className="space-y-4">
+                                                    <Cloud className="w-16 h-16 text-pink-500 mx-auto opacity-50" />
+                                                    <h3 className="text-xl font-bold text-white">Word Cloud</h3>
+                                                    <p className="text-gray-400">Participants will type words that appear in a live word cloud.</p>
+                                                </div>
+                                            )}
+                                            {q.type === 'open_ended' && (
+                                                <div className="space-y-4">
+                                                    <MessageSquare className="w-16 h-16 text-orange-500 mx-auto opacity-50" />
+                                                    <h3 className="text-xl font-bold text-white">Open Ended</h3>
+                                                    <p className="text-gray-400">Participants can type longer answers or sentences.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
+
     );
-};
+}
 
 export default CreateQuiz;
