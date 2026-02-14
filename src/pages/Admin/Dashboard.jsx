@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { Plus, Play, MoreVertical, Trash2, Edit, Loader2, Home, FileText, Users, LogOut, BarChart2, Download, Clock, Activity, Sun, Moon } from 'lucide-react';
+import { Plus, Play, MoreVertical, Trash2, Edit, Loader2, Home, FileText, Users, LogOut, BarChart2, Download, Clock, Activity, Sun, Moon, Trophy } from 'lucide-react';
+import LeaderboardModal from '../../components/LeaderboardModal';
 import { collection, query, orderBy, getDocs, deleteDoc, doc, addDoc, serverTimestamp, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getAuth, signOut } from 'firebase/auth';
@@ -25,6 +26,7 @@ const Dashboard = () => {
     const [quizzes, setQuizzes] = useState([]);
     const [sessions, setSessions] = useState([]); // All session history
     const [activeSessions, setActiveSessions] = useState([]); // Currently active
+    const [selectedSession, setSelectedSession] = useState(null); // For leaderboard modal
 
     const [loadingQuizzes, setLoadingQuizzes] = useState(false);
     const [loadingSessions, setLoadingSessions] = useState(false);
@@ -444,6 +446,14 @@ const Dashboard = () => {
                                                     Resume
                                                 </button>
                                             )}
+
+                                            <button
+                                                onClick={() => setSelectedSession(session)}
+                                                className="bg-yellow-500 hover:bg-yellow-400 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors shadow-lg shadow-yellow-500/20"
+                                            >
+                                                <Trophy className="w-4 h-4" /> Leaderboard
+                                            </button>
+
                                             <button
                                                 onClick={() => handleDownloadCSV(session)}
                                                 className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors border border-gray-600"
@@ -462,6 +472,14 @@ const Dashboard = () => {
                                     </div>
                                 ))}
                             </div>
+                        )}
+
+                        {/* Leaderboard Modal */}
+                        {selectedSession && (
+                            <LeaderboardModal
+                                session={selectedSession}
+                                onClose={() => setSelectedSession(null)}
+                            />
                         )}
                     </div>
                 )}
