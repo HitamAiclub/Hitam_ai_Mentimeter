@@ -6,6 +6,8 @@ import { Users, Play, BarChart2, ArrowRight, Trophy, Clock, CheckCircle2, Sun, M
 import QRCode from 'react-qr-code';
 import { useTheme } from '../../context/ThemeContext';
 
+import WordCloud from 'react-d3-cloud';
+
 const HostPanel = () => {
     const { sessionId } = useParams();
     const navigate = useNavigate();
@@ -342,7 +344,7 @@ const HostPanel = () => {
 
                         {/* Visualization Area */}
                         {(currentQuestion.type === 'word_cloud') ? (
-                            <div className="bg-gray-100 dark:bg-slate-800/50 p-8 rounded-3xl min-h-[400px] max-h-[600px] overflow-y-auto flex flex-wrap justify-center items-center gap-4 content-center relative shadow-inner dark:shadow-none custom-scrollbar">
+                            <div className="bg-gray-100 dark:bg-slate-800/50 p-8 rounded-3xl min-h-[500px] h-[600px] w-full flex items-center justify-center relative shadow-inner dark:shadow-none overflow-hidden text-black">
                                 {(() => {
                                     const words = answers
                                         .filter(a => a.questionIndex === session.currentQuestionIndex && a.answerText)
@@ -351,29 +353,37 @@ const HostPanel = () => {
                                     const counts = {};
                                     words.forEach(w => { counts[w.toLowerCase()] = (counts[w.toLowerCase()] || 0) + 1; });
 
-                                    const maxCount = Math.max(...Object.values(counts), 1);
+                                    // REACT-D3-CLOUD EXPECTS: { text: string, value: number }
+                                    const data = Object.entries(counts).map(([text, value]) => ({
+                                        text,
+                                        value: value * 10
+                                    }));
 
-                                    return Object.entries(counts).map(([word, count], idx) => {
-                                        // Smoother scaling: 1.5rem min, 5rem max
-                                        const fontSize = 1.5 + (count / maxCount) * 3.5;
-                                        // Random pastel colors
-                                        const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#22d3ee', '#818cf8', '#e879f9'];
-                                        const color = colors[idx % colors.length];
+                                    const fontSizeMapper = word => Math.log2(word.value) * 15 + 20; // More dramatic scaling
+                                    const rotate = () => (Math.random() > 0.5 ? 90 : 0); // Random visual rotation
 
-                                        return (
-                                            <span
-                                                key={word}
-                                                className="font-black capitalize transition-all duration-1000 animate-pop-in inline-block hover:scale-110 cursor-pointer break-all text-center px-4"
-                                                style={{ fontSize: `${fontSize}rem`, color: color, textShadow: '0 4px 10px rgba(0,0,0,0.3)', lineHeight: 1.2 }}
-                                            >
-                                                {word}
-                                            </span>
-                                        );
-                                    });
+                                    // Professional Palette (Blues, Greens, Earth Tones) matching the image
+                                    const onWordClick = () => { };
+                                    const colors = ['#2563eb', '#059669', '#d97706', '#db2777', '#4b5563', '#9333ea', '#0891b2'];
+                                    // Blue, Green, Amber, Pink, Gray, Purple, Cyan
+
+                                    return data.length > 0 ? (
+                                        <div style={{ width: '100%', height: '100%' }}>
+                                            <WordCloud
+                                                data={data}
+                                                width={800} // Increased base width for resolution
+                                                height={600}
+                                                font="Inter, sans-serif"
+                                                fontSize={fontSizeMapper}
+                                                rotate={rotate}
+                                                padding={4}
+                                                fill={(d, i) => colors[i % colors.length]} // Custom colors
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="text-slate-500 text-xl font-bold italic animate-pulse">Waiting for responses...</div>
+                                    );
                                 })()}
-                                {answers.filter(a => a.questionIndex === session.currentQuestionIndex).length === 0 && (
-                                    <div className="text-slate-500 text-xl font-bold italic animate-pulse">Waiting for responses...</div>
-                                )}
                             </div>
                         ) : (currentQuestion.type === 'open_ended') ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
